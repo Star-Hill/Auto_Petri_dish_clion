@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "esp-idf/pthread",
+		"source" : "D:/computer/C/ESP_IDF/body542/Espressif/frameworks/esp-idf-v5.4.2/components/pthread"
+	}
+}
