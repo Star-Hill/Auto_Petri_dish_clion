@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "Auto_Petri_dish_clion",
-    "project_version":    "2672620-dirty",
+    "project_version":    "92e13fb-dirty",
     "project_path":       "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion",
     "idf_path":           "D:/computer/C/ESP_IDF/body542/Espressif/frameworks/esp-idf-v5.4.2",
     "build_dir":          "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/build",

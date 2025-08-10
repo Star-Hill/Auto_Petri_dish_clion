@@ -16,9 +16,8 @@
 #include "driver/uart.h"
 
 
-void app_main(void)
-{
-    LeftRight_Test();
+void app_main(void) {
+    Peristaltic_pump_Test();
 }
 
 

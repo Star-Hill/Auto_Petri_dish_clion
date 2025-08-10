@@ -31,6 +31,7 @@ static uint16_t Peristaltic_pump_modbus_crc16(const uint8_t *buf, uint16_t len) 
 
 /********** RS485发送数据   ***************/
 static void Peristaltic_pump_rs485_send_bytes(const uint8_t *data, uint8_t length) {
+    uart_flush_input(Peristaltic_pump_UART_NUM);
     if (uart_write_bytes(Peristaltic_pump_UART_NUM, (const char *) data, length) != length) {
         ESP_LOGE(TAG, "Send data failed.");
     }
@@ -38,7 +39,7 @@ static void Peristaltic_pump_rs485_send_bytes(const uint8_t *data, uint8_t lengt
 }
 
 // 写单寄存器
-static void modbus_write_single_register(uint16_t reg_addr, uint16_t value) {
+static void Peristaltic_pump_modbus_write_single_register(uint16_t reg_addr, uint16_t value) {
     uint8_t frame[8];
     frame[0] = Peristaltic_pump_SLAVE_ADDR;
     frame[1] = Peristaltic_pump_MODBUS_WRITE_SINGLE_REGISTER;
@@ -129,16 +130,66 @@ void Peristaltic_pump_init(void) {
     ESP_ERROR_CHECK(uart_driver_install(Peristaltic_pump_UART_NUM, 1024, 0, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(Peristaltic_pump_UART_NUM, &uart_config));
     ESP_ERROR_CHECK(
-            uart_set_pin(Peristaltic_pump_UART_NUM, Peristaltic_pump_485_TX, Peristaltic_pump_485_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+            uart_set_pin(Peristaltic_pump_UART_NUM, Peristaltic_pump_485_TX, Peristaltic_pump_485_RX,
+                         UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
     // 半双工模式
     ESP_ERROR_CHECK(uart_set_mode(Peristaltic_pump_UART_NUM, UART_MODE_RS485_HALF_DUPLEX));
     ESP_LOGI(TAG, "Peristaltic_pump UART initialized.\n");
 }
 
-void Peristaltic_pump_set_speed(uint16_t rpm) {
-    ESP_LOGI(TAG, "---   伺服电机转速 reg 值  ---");
-    uint16_t reg_value = (rpm * 10);
-    modbus_write_single_register(0x06, reg_value);
-    ESP_LOGI(TAG, "当前电机的转速为: %u \n", rpm);
+void Peristaltic_pump_set_speed(int32_t rpm) {             //蠕动泵转速
+    ESP_LOGI(TAG, "---   蠕动泵转速 reg 值  ---");
+    int32_t reg_value = (rpm * 10);
+    Peristaltic_pump_modbus_write_single_register(0x06, reg_value);
+    ESP_LOGI(TAG, "当前蠕动泵的转速为: %ld \n", rpm);
+}
+
+// ====== 示例：方向状态寄存器 ======
+void Peristaltic_pump_set_Reverse_Mode(uint16_t Mode) {            //逆时针1  顺时针0
+    uint16_t decimal_addr = 3101;                  // 十进制地址
+    uint16_t hex_addr = (uint16_t) decimal_addr;    // 实际存储是一样的，打印时显示 16 进制方便对照
+
+    ESP_LOGI(TAG, "--- 蠕动泵方向模式: 寄存器(十进制:%u, 十六进制:0x%04X) ---", decimal_addr, hex_addr);
+
+    Peristaltic_pump_modbus_write_single_register(hex_addr, Mode);
+    if (Mode == 1) {
+        ESP_LOGI(TAG, "当前蠕动泵方向: 逆时针 \n");
+    } else if (Mode == 0) {
+        ESP_LOGI(TAG, "当前蠕动泵方向: 顺时针 \n");
+    } else {
+        ESP_LOGW(TAG, "未知的方向值: %u \n", Mode);
+    }
+}
+
+// ====== 示例：启动蠕动泵 ======
+void Peristaltic_pump_Start(void) {
+    uint16_t EN_addr = 3102;                  // 十进制地址
+    uint16_t hex_addr = (uint16_t) EN_addr;
+    ESP_LOGI(TAG, "--- 蠕动泵运行状态模式: 寄存器(十进制:%u, 十六进制:0x%04X) ---", EN_addr, hex_addr);
+
+    ESP_LOGI(TAG, "--- 蠕动泵使能 reg 值---");
+    Peristaltic_pump_modbus_write_single_register(hex_addr, 0X01);
+    ESP_LOGI(TAG, "----- 蠕动泵使能 -----\n");
+}
+
+// ====== 示例：停止伺服电机 ======
+void Peristaltic_pump_Stop(void) {
+    uint16_t DIS_EN_addr = 3102;                  // 十进制地址
+    uint16_t hex_addr = (uint16_t) DIS_EN_addr;
+    ESP_LOGI(TAG, "--- 蠕动泵运行状态模式: 寄存器(十进制:%u, 十六进制:0x%04X) ---", DIS_EN_addr, hex_addr);
+
+    ESP_LOGI(TAG, "--- 蠕动泵失能 reg 值 ---");
+    Peristaltic_pump_modbus_write_single_register(hex_addr, 0X00);
+    ESP_LOGI(TAG, "----- 蠕动泵失能 -----\n");
+}
+
+
+// ====== 示例：测试蠕动泵函数     蠕动泵正转反转 ======
+void Peristaltic_pump_Test(void) {
+    Peristaltic_pump_init();                        //蠕动泵初始化
+    Peristaltic_pump_Start();                   //启动蠕动泵
+    Peristaltic_pump_set_speed(300);       //蠕动泵速度
+    vTaskDelay(pdMS_TO_TICKS(5000));
+    Peristaltic_pump_Stop();                   //停止蠕动泵
 }

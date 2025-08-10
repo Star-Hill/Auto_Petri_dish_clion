@@ -10,9 +10,9 @@
 
 #define SENSOR_Up_GPIO      19
 #define SENSOR_Down_GPIO    20
-#define SENSOR_LEFT_ONE_GPIO    7
-#define SENSOR_LEFT_TWO_GPIO    15
-#define SENSOR_LEFT_THREE_GPIO    16
+#define SENSOR_LEFT_ONE_GPIO    15
+#define SENSOR_LEFT_TWO_GPIO    16
+#define SENSOR_LEFT_THREE_GPIO    17
 
 // 初始化传感器 GPIO
 void sensor_upDown_init();

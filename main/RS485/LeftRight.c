@@ -26,7 +26,8 @@ static uint16_t modbus_crc16(const uint8_t *buf, uint16_t len) {
 }
 
 /********** RS485发送数据   ***************/
-static void rs485_send_bytes(const uint8_t *data, uint8_t length) {
+static void LeftRight_rs485_send_bytes(const uint8_t *data, uint8_t length) {
+    uart_flush_input(LeftRight_UART_NUM);
     if (uart_write_bytes(LeftRight_UART_NUM, (const char *) data, length) != length) {
         ESP_LOGE(TAG, "Send data failed.");
     }
@@ -34,7 +35,7 @@ static void rs485_send_bytes(const uint8_t *data, uint8_t length) {
 }
 
 // 写单寄存器
-static void modbus_write_single_register(uint16_t reg_addr, uint16_t value) {
+static void LeftRight_modbus_write_single_register(uint16_t reg_addr, uint16_t value) {
     uint8_t frame[8];
     frame[0] = LeftRight_SLAVE_ADDR;
     frame[1] = LeftRight_MODBUS_WRITE_SINGLE_REGISTER;
@@ -48,7 +49,7 @@ static void modbus_write_single_register(uint16_t reg_addr, uint16_t value) {
     frame[7] = crc >> 8;     // CRC高字节
 
     ESP_LOG_BUFFER_HEX("TX", frame, sizeof(frame));
-    rs485_send_bytes(frame, sizeof(frame));
+    LeftRight_rs485_send_bytes(frame, sizeof(frame));
 
     // 延迟等待响应
     vTaskDelay(pdMS_TO_TICKS(20));
@@ -85,7 +86,7 @@ static bool modbus_read_single_register(uint16_t reg_addr, uint16_t *value) {
     frame[7] = crc >> 8;    // CRC 高字节
 
     ESP_LOG_BUFFER_HEX("TX", frame, sizeof(frame));
-    rs485_send_bytes(frame, sizeof(frame));
+    LeftRight_rs485_send_bytes(frame, sizeof(frame));
 
     // 等待响应
     vTaskDelay(pdMS_TO_TICKS(20));
@@ -153,45 +154,45 @@ void LeftRight_read_Electric_current() {
 }
 
 // ====== 示例：写转速寄存器 ======
-void LeftRight_set_speed(int16_t rpm) {                 //负左正右
+void LeftRight_set_speed(int32_t rpm) {                 //负左正右
     ESP_LOGI(TAG, "---   伺服电机转速 reg 值  ---");
-    int16_t reg_value = (rpm * 8192) / 3000;            // 转速转 Modbus 数据
-    modbus_write_single_register(0x06, reg_value);
-    ESP_LOGI(TAG, "当前电机的转速为: %u \n", rpm);
+    int32_t reg_value = (rpm * 8192) / 3000;            // 转速转 Modbus 数据
+    LeftRight_modbus_write_single_register(0x06, reg_value);
+    ESP_LOGI(TAG, "当前电机的转速为: %ld \n", rpm);
 }
 
 // ====== 示例：速度模式寄存器 ======
 void LeftRight_set_speed_Mode(uint16_t Mode) {
     ESP_LOGI(TAG, "---   伺服电机模式: 速度 reg 值 ---");
-    modbus_write_single_register(0x02, Mode);
+    LeftRight_modbus_write_single_register(0x02, Mode);
     ESP_LOGI(TAG, "当前电机处于速度模式 \n");
 }
 
-// ====== 示例：速度模式寄存器 ======
+// ====== 示例：速度模式寄存器 ======                         位置模式未启用
 void LeftRight_set_Location_Mode(uint16_t Mode) {
     ESP_LOGI(TAG, "---   伺服电机模式: 位置 reg 值 ---");
-    modbus_write_single_register(0x02, Mode);
+    LeftRight_modbus_write_single_register(0x02, Mode);
     ESP_LOGI(TAG, "当前电机处于位置模式 \n");
 }
 
 // ====== 示例：启动伺服电机 ======
 void LeftRight_Start(void) {
     ESP_LOGI(TAG, "--- 伺服电机开始工作 reg 值---");
-    modbus_write_single_register(0x00, 0X01);
+    LeftRight_modbus_write_single_register(0x00, 0X01);
     ESP_LOGI(TAG, "----- 伺服电机开始工作 -----\n");
 }
 
 // ====== 示例：停止伺服电机 ======
 void LeftRight_Stop(void) {
     ESP_LOGI(TAG, "--- 伺服电机停止工作 reg 值 ---");
-    modbus_write_single_register(0x00, 0X00);
+    LeftRight_modbus_write_single_register(0x00, 0X00);
     ESP_LOGI(TAG, "----- 伺服电机停止工作 -----\n");
 }
 
 // ====== 示例：清除故障伺服电机 ======
 void LeftRight_Clear_the_fault(void) {
     ESP_LOGI(TAG, "--- 伺服电机: 清除故障 reg 值 ---");
-    modbus_write_single_register(0x4A, 00);
+    LeftRight_modbus_write_single_register(0x4A, 00);
     ESP_LOGI(TAG, "----- 伺服电机清除故障 -----\n");
 }
 
@@ -202,7 +203,7 @@ void LeftRight_Test(void) {
     LeftRight_read_Voltage();           //输出当前驱动器的电压值
     LeftRight_read_Electric_current();  //读取当前驱动器的电流值
 
-    while(1) {
+    while (1) {
         LeftRight_Clear_the_fault();        //清除故障
         LeftRight_set_speed_Mode(0Xc4);//伺服电机速度模式
         LeftRight_Start();                  //启动伺服电机

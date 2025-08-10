@@ -48,7 +48,7 @@ void LeftRight_read_Electric_current(void);
  *
  * @param rpm 目标转速（单位 RPM）
  */
-void LeftRight_set_speed(int16_t rpm);
+void LeftRight_set_speed(int32_t rpm);
 
 /**
  * @brief 设置伺服电机为速度模式
