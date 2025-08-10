@@ -4,7 +4,9 @@ idf_component_register(
             "DM430/UpDown.c"
             "DM430/Rotate.c"
             "DM430/Little_Rotate.c"
+
             "RS485/LeftRight.c"
+            "RS485/Peristaltic_pump.c"
 
             "Sensor/sensor.c"
             "Uart/HMI_control_driver.c"
@@ -33,5 +35,6 @@ idf_component_register(
             esp_timer
             esp_driver_gptimer
             esp_driver_uart
+            nvs_flash
 
 )

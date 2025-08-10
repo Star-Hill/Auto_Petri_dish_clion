@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "Auto_Petri_dish_clion",
-    "project_version":    "1",
+    "project_version":    "2672620-dirty",
     "project_path":       "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion",
     "idf_path":           "D:/computer/C/ESP_IDF/body542/Espressif/frameworks/esp-idf-v5.4.2",
     "build_dir":          "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/build",
@@ -1190,12 +1190,12 @@
             "dir": "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main",
             "type": "LIBRARY",
             "lib": "__idf_main",
-            "reqs": [ "esp_driver_ledc", "esp_driver_gpio", "esp_timer", "esp_driver_gptimer", "esp_driver_uart" ],
+            "reqs": [ "esp_driver_ledc", "esp_driver_gpio", "esp_timer", "esp_driver_gptimer", "esp_driver_uart", "nvs_flash" ],
             "priv_reqs": [],
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "file": "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/build/esp-idf/main/libmain.a",
-            "sources": [ "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Auto_Petri_dish_clion.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/DM430/UpDown.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/DM430/Rotate.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/DM430/Little_Rotate.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/RS485/LeftRight.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Sensor/sensor.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Uart/HMI_control_driver.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Pump_and_Valve/Pump_driver.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Pump_and_Valve/Valve_driver.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Pump_and_Valve/Pump_Valve_driver.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Sensor_motor_control/LeftRight/LeftRight_motor_control.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Sensor_motor_control/UpDown/UpDown_motor_control.c" ],
+            "sources": [ "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Auto_Petri_dish_clion.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/DM430/UpDown.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/DM430/Rotate.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/DM430/Little_Rotate.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/RS485/LeftRight.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/RS485/Peristaltic_pump.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Sensor/sensor.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Uart/HMI_control_driver.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Pump_and_Valve/Pump_driver.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Pump_and_Valve/Valve_driver.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Pump_and_Valve/Pump_Valve_driver.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Sensor_motor_control/LeftRight/LeftRight_motor_control.c", "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main/Sensor_motor_control/UpDown/UpDown_motor_control.c" ],
             "include_dirs": [ ".", "DM430", "Sensor", "Sensor_motor_control/UpDown", "Sensor_motor_control/LeftRight", "RS485", "Pump_and_Valve", "Uart" ]
         },
         "mbedtls": {
@@ -2856,7 +2856,7 @@
             "prefix": "idf",
             "dir": "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/main",
             "lib": "__idf_main",
-            "reqs": [ "esp_driver_ledc", "esp_driver_gpio", "esp_timer", "esp_driver_gptimer", "esp_driver_uart" ],
+            "reqs": [ "esp_driver_ledc", "esp_driver_gpio", "esp_timer", "esp_driver_gptimer", "esp_driver_uart", "nvs_flash" ],
             "priv_reqs": [],
             "managed_reqs": [],
             "managed_priv_reqs": [],

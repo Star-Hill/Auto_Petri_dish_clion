@@ -49,9 +49,3 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
   include("D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/build/esp-idf/mbedtls/mbedtls/3rdparty/p256-m/CMakeFiles/p256m.dir/install-cxx-module-bmi-Debug.cmake" OPTIONAL)
 endif()
 
-string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
-       "${CMAKE_INSTALL_MANIFEST_FILES}")
-if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "D:/computer/C/ESP_IDF/ESP_workplace/ESP32S3R16N8/Auto_Petri_dish/Auto_Petri_dish_clion/build/esp-idf/mbedtls/mbedtls/3rdparty/p256-m/install_local_manifest.txt"
-     "${CMAKE_INSTALL_MANIFEST_CONTENT}")
-endif()

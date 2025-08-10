@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -10,10 +11,16 @@
 #include "Pump_and_Valve/Valve_driver.h"
 #include "Pump_Valve_driver.h"
 #include "HMI_control_driver.h"
+#include "Peristaltic_pump.h"
+#include "LeftRight.h"
+#include "driver/uart.h"
 
 
-void app_main(void) {
-    HMI_control_driver_test();
+void app_main(void)
+{
+    LeftRight_Test();
 }
+
+
 
 
