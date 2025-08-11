@@ -16,7 +16,7 @@
 #define UpDown_STEPPER_PWM_CHANNEL     LEDC_CHANNEL_1
 #define UpDown_STEPPER_PWM_TIMER       LEDC_TIMER_1
 #define UpDown_STEPPER_PWM_MODE        LEDC_LOW_SPEED_MODE
-#define UpDown_STEPPER_PWM_FREQ_HZ     10000
+#define UpDown_STEPPER_PWM_FREQ_HZ     20000
 #define UpDown_STEPPER_PWM_RESOLUTION  LEDC_TIMER_10_BIT
 #define UpDown_STEPPER_PWM_DUTY        512         // 对于10位分辨率的最大值为1023
 

@@ -7,8 +7,6 @@
 
 #include "driver/ledc.h"
 
-#define TAG1 "Rotate_MOTOR"
-
 // 电机控制引脚
 #define Rotate_STEPPER_PUL_GPIO    40
 #define Rotate_STEPPER_DIR_GPIO    39
@@ -18,7 +16,7 @@
 #define Rotate_STEPPER_PWM_CHANNEL     LEDC_CHANNEL_0
 #define Rotate_STEPPER_PWM_TIMER       LEDC_TIMER_0
 #define Rotate_STEPPER_PWM_MODE        LEDC_LOW_SPEED_MODE
-#define Rotate_STEPPER_PWM_FREQ_HZ     50000
+#define Rotate_STEPPER_PWM_FREQ_HZ     1000
 #define Rotate_STEPPER_PWM_RESOLUTION  LEDC_TIMER_10_BIT
 #define Rotate_STEPPER_PWM_DUTY        512         // 对于10位分辨率的最大值为1023
 

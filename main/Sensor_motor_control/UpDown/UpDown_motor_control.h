@@ -5,7 +5,6 @@
 #ifndef AUTO_PETRI_DISH_CLION_UPDOWN_MOTOR_CONTROL_H
 #define AUTO_PETRI_DISH_CLION_UPDOWN_MOTOR_CONTROL_H
 
-#include "UpDown_motor_control.h"
 #include "UpDown.h"
 #include "sensor.h"
 #include "esp_log.h"

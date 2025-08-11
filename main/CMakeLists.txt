@@ -10,6 +10,7 @@ idf_component_register(
 
             "Sensor/sensor.c"
             "Uart/HMI_control_driver.c"
+            "Uart/softserial.c"
 
             "Pump_and_Valve/Pump_driver.c"
             "Pump_and_Valve/Valve_driver.c"
@@ -17,6 +18,9 @@ idf_component_register(
 
             "Sensor_motor_control/LeftRight/LeftRight_motor_control.c"
             "Sensor_motor_control/UpDown/UpDown_motor_control.c"
+
+            "Status/Calibration.c"
+            "Status/Instrument_starts_canning.c"
 
 
         INCLUDE_DIRS                    #路径
@@ -28,6 +32,7 @@ idf_component_register(
             "RS485"
             "Pump_and_Valve"
             "Uart"
+            "Status"
 
         REQUIRES                        #组件中找不到的需要显示说明
             esp_driver_ledc

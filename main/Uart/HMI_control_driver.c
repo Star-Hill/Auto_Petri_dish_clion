@@ -44,8 +44,6 @@ int uart_hmi_read(uint8_t *data, size_t length) {
 
 void HMI_control_driver_test(void) {
     uart_hmi_init();
-    Pump_driver_init();
-    valve_UpDown_driver_init();
 
     uint8_t data[32];
 

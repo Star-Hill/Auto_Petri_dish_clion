@@ -8,7 +8,7 @@ static const char *TAG = "MOTOR_CTRL";
 
 void UpDown_motor_auto_loop(void ) {
     //初始化传感器
-    sensor_upDown_init();
+    sensor_ALL_init();
     // 初始化并使能电机
     UpDown_motor_driver_init();
     UpDown_motor_enable(1);             //1--使能

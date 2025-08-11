@@ -7,7 +7,7 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 
-  #define TAG "Rotate_MOTOR"
+#define TAG "Rotate_MOTOR"
 
 void Rotate_motor_driver_init(void) {
     // 配置 EN 和 DIR GPIO
@@ -41,7 +41,7 @@ void Rotate_motor_driver_init(void) {
     };
     ledc_channel_config(&ledc_channel);
 
-    ESP_LOGI(TAG1, "Rotate_MOTOR driver initialized.");
+    ESP_LOGI(TAG, "Rotate_MOTOR driver initialized.");
 }
 
 void Rotate_motor_set_direction(int dir) {
