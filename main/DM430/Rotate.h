@@ -6,6 +6,11 @@
 #define AUTO_PETRI_DISH_CLION_ROTATE_H
 
 #include "driver/ledc.h"
+#include "freertos/FreeRTOS.h"
+#include "driver/gpio.h"
+#include "esp_log.h"
+#include "sensor.h"
+#include <math.h>
 
 // 电机控制引脚
 #define Rotate_STEPPER_PUL_GPIO    40
@@ -37,6 +42,9 @@ void Rotate_motor_start(void);
 
 // 停止脉冲输出
 void Rotate_motor_stop(void);
+
+//柱体电机旋转到任意角度
+void Rotate_motor_CALIBRATION(float angle_deg, float rpm, bool check_sensor);
 
 //电机测试程序
 void Rotate_motor_test(void);

@@ -139,9 +139,13 @@ void Peristaltic_pump_init(void) {
 }
 
 void Peristaltic_pump_set_speed(int32_t rpm) {             //蠕动泵转速
-    ESP_LOGI(TAG, "---   蠕动泵转速 reg 值  ---");
+    uint16_t decimal_addr = 3100;                  // 十进制地址
+    uint16_t hex_addr = (uint16_t) decimal_addr;    // 实际存储是一样的，打印时显示 16 进制方便对照
+    ESP_LOGI(TAG, "--- 蠕动泵方向模式: 寄存器(十进制:%u, 十六进制:0x%04X) ---", decimal_addr, hex_addr);
     int32_t reg_value = (rpm * 10);
-    Peristaltic_pump_modbus_write_single_register(0x06, reg_value);
+
+    ESP_LOGI(TAG, "---   蠕动泵转速 reg 值  ---");
+    Peristaltic_pump_modbus_write_single_register(hex_addr, reg_value);
     ESP_LOGI(TAG, "当前蠕动泵的转速为: %ld \n", rpm);
 }
 
@@ -162,34 +166,43 @@ void Peristaltic_pump_set_Reverse_Mode(uint16_t Mode) {            //逆时针1 
     }
 }
 
-// ====== 示例：启动蠕动泵 ======
-void Peristaltic_pump_Start(void) {
-    uint16_t EN_addr = 3102;                  // 十进制地址
-    uint16_t hex_addr = (uint16_t) EN_addr;
-    ESP_LOGI(TAG, "--- 蠕动泵运行状态模式: 寄存器(十进制:%u, 十六进制:0x%04X) ---", EN_addr, hex_addr);
+// ====== 示例：启动蠕动泵  停止蠕动泵 ======
+void Peristaltic_pump_Control(bool enable) {
+    uint16_t reg_addr = 3102;  // 寄存器地址
 
-    ESP_LOGI(TAG, "--- 蠕动泵使能 reg 值---");
-    Peristaltic_pump_modbus_write_single_register(hex_addr, 0X01);
-    ESP_LOGI(TAG, "----- 蠕动泵使能 -----\n");
+    ESP_LOGI(TAG, "--- 蠕动泵运行状态模式: 寄存器(十进制:%u, 十六进制:0x%04X) ---", reg_addr, reg_addr);
+
+    if (enable) {
+        ESP_LOGI(TAG, "--- 蠕动泵使能 reg 值 ---");
+        Peristaltic_pump_modbus_write_single_register(reg_addr, 0x01);
+        ESP_LOGI(TAG, "----- 蠕动泵使能 -----\n");
+    } else {
+        ESP_LOGI(TAG, "--- 蠕动泵失能 reg 值 ---");
+        Peristaltic_pump_modbus_write_single_register(reg_addr, 0x00);
+        ESP_LOGI(TAG, "----- 蠕动泵失能 -----\n");
+    }
 }
 
-// ====== 示例：停止伺服电机 ======
-void Peristaltic_pump_Stop(void) {
-    uint16_t DIS_EN_addr = 3102;                  // 十进制地址
-    uint16_t hex_addr = (uint16_t) DIS_EN_addr;
-    ESP_LOGI(TAG, "--- 蠕动泵运行状态模式: 寄存器(十进制:%u, 十六进制:0x%04X) ---", DIS_EN_addr, hex_addr);
+// ====== 示例：启动蠕动泵  停止蠕动泵 ======
+void Peristaltic_pump_Cleaning(bool Cleaning_Speed) {
+    uint16_t reg_addr = 3103;  // 寄存器地址
 
-    ESP_LOGI(TAG, "--- 蠕动泵失能 reg 值 ---");
-    Peristaltic_pump_modbus_write_single_register(hex_addr, 0X00);
-    ESP_LOGI(TAG, "----- 蠕动泵失能 -----\n");
+    ESP_LOGI(TAG, "--- 蠕动泵运行状态模式: 寄存器(十进制:%u, 十六进制:0x%04X) ---", reg_addr, reg_addr);
+
+    if (Cleaning_Speed) {
+        ESP_LOGI(TAG, "--- 蠕动泵当前全速清洗 ---");
+        Peristaltic_pump_modbus_write_single_register(reg_addr, 0x01);
+    } else {
+        ESP_LOGI(TAG, "--- 蠕动泵当前正常速度清洗 ---");
+        Peristaltic_pump_modbus_write_single_register(reg_addr, 0x00);
+    }
 }
-
 
 // ====== 示例：测试蠕动泵函数     蠕动泵正转反转 ======
 void Peristaltic_pump_Test(void) {
     Peristaltic_pump_init();                        //蠕动泵初始化
-    Peristaltic_pump_Start();                   //启动蠕动泵
-    Peristaltic_pump_set_speed(300);       //蠕动泵速度
+    Peristaltic_pump_Control(1);                   //启动蠕动泵
+    Peristaltic_pump_set_speed(100);       //蠕动泵速度
     vTaskDelay(pdMS_TO_TICKS(5000));
-    Peristaltic_pump_Stop();                   //停止蠕动泵
+    Peristaltic_pump_Control(0);                   //停止蠕动泵
 }

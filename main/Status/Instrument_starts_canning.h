@@ -15,8 +15,11 @@
 #include "Rotate.h"
 #include "Pump_driver.h"
 #include "Valve_driver.h"
+#include "Peristaltic_pump.h"
+#include "Little_Rotate.h"
 
-#include "Calibration.h"
+
+#include "Machine_initialization.h"
 
 
 

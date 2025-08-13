@@ -35,5 +35,5 @@ void software_uart_init(SoftwareUART *uart);
 void software_uart_tx_str(SoftwareUART *uart,const char* str);
 int software_uart_rx_read(SoftwareUART *uart, uint8_t* data, size_t size);
 
-
+void software_uart_test(void);               //干净的串口通讯
 #endif //AUTO_PETRI_DISH_CLION_SOFTSERIAL_H

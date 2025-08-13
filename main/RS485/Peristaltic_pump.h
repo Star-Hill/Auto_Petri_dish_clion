@@ -51,16 +51,16 @@ void Peristaltic_pump_set_speed(int32_t rpm);
 void Peristaltic_pump_set_Reverse_Mode(uint16_t Mode);
 
 /**
- * @brief 启动蠕动泵
- * @note 对应寄存器地址为十进制 3102，写入 0x01 使能
+ * @brief 启动停止蠕动泵
+ * @note 对应寄存器地址为十进制 3102，写入 0x01 使能    写入 0x00 使能
  */
-void Peristaltic_pump_Start(void);
+void Peristaltic_pump_Control(bool enable);
 
 /**
- * @brief 停止蠕动泵
- * @note 对应寄存器地址为十进制 3102，写入 0x00 失能
+ * @brief 是否全速清洗蠕动泵
+ * @note 对应寄存器地址为十进制 3103，写入 0x01 全速    写入 0x00 正常速度
  */
-void Peristaltic_pump_Stop(void);
+void Peristaltic_pump_Cleaning(bool enable);
 
 /**
  * @brief 测试蠕动泵循环启停

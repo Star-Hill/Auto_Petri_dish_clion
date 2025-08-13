@@ -128,7 +128,10 @@ void software_uart_init(SoftwareUART *uart)
     portMUX_INITIALIZE(&uart->lock);
 
     // 安装GPIO中断服务
-    ESP_ERROR_CHECK(gpio_install_isr_service(0));
+    esp_err_t err = gpio_install_isr_service(0);
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        ESP_ERROR_CHECK(err);  // 只有不是重复安装的错误才会触发 abort
+    }
     ESP_ERROR_CHECK(gpio_isr_handler_add(uart->rx_pin, software_uart_rx_isr,(void*)uart));//传入rx 与结构体的值
 }
 
@@ -202,6 +205,9 @@ int software_uart_rx_read(SoftwareUART *uart, uint8_t* data, size_t size)
     return read_size;
 }
 
+/*
+ *  该程序不带任何操作，配置下方引脚即可测试软串口通讯是否正常
+ * */
 void software_uart_test(void){
     static const char *TAG = "SoftwareUART";
     SoftwareUART uart = {
@@ -225,9 +231,6 @@ void software_uart_test(void){
         if (len > 0) {
             recv_str[len] = '\0'; // 保证是 C 字符串
             ESP_LOGI(TAG, "收到字符串: %s", recv_str);
-            if (strstr((char*)recv_str, "UpDown_motor_auto_loop")) {
-                UpDown_motor_auto_loop();
-            }
         }
         vTaskDelay(pdMS_TO_TICKS(50));
     }

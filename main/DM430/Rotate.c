@@ -3,9 +3,6 @@
 //
 
 #include "Rotate.h"
-#include "freertos/FreeRTOS.h"
-#include "driver/gpio.h"
-#include "esp_log.h"
 
 #define TAG "Rotate_MOTOR"
 
@@ -49,7 +46,7 @@ void Rotate_motor_set_direction(int dir) {
 }
 
 void Rotate_motor_enable(int enable) {
-    gpio_set_level(Rotate_STEPPER_EN_GPIO, enable);  // 共阳极：低电平使能
+    gpio_set_level(Rotate_STEPPER_EN_GPIO, enable);
 }
 
 void Rotate_motor_set_speed(uint32_t duty) {
@@ -77,4 +74,56 @@ void Rotate_motor_test(void) {
     Rotate_motor_start();                       // 开始转动
     vTaskDelay(pdMS_TO_TICKS(2000));
     Rotate_motor_stop();                        // 停止
+}
+
+
+/*
+ * 柱体带年纪旋转到任意角度
+ * */
+void Rotate_motor_CALIBRATION(float angle_deg, float rpm, bool check_sensor) {
+
+    const uint32_t motor_full_steps = 200; // 电机整步数
+    // 计算总步数
+    uint32_t total_steps = (uint32_t)((fabs(angle_deg) / 360.0f) * motor_full_steps + 0.5f);
+    if (total_steps == 0) return; // 没有步数就直接返回
+
+    // 设置方向
+    int dir = (angle_deg >= 0) ? 1 : 0;
+    Rotate_motor_set_direction(dir);
+    Rotate_motor_enable(1);
+
+    // 计算PWM频率
+    float steps_per_sec = (rpm * motor_full_steps)  / 60.0f;
+    uint32_t pwm_freq = (uint32_t)(steps_per_sec + 0.5f);
+
+    // 更新LEDC频率
+    ledc_set_freq(Rotate_STEPPER_PWM_MODE, Rotate_STEPPER_PWM_TIMER, pwm_freq);
+
+    // 启动PWM
+    Rotate_motor_set_speed(Rotate_STEPPER_PWM_DUTY);
+
+    // 计算需要的时间并延时
+    float time_sec = (float)total_steps / pwm_freq;
+
+    if (check_sensor == 1) {
+        // 循环检测传感器状态，期间延时小段时间，模拟非阻塞等待
+        const TickType_t delay_ticks = pdMS_TO_TICKS(10); // 10ms检测一次
+        TickType_t elapsed_ticks = 0;
+        TickType_t total_ticks = pdMS_TO_TICKS((uint32_t) (time_sec * 1000));
+
+        while (elapsed_ticks < total_ticks) {
+            if (sensor_Calibration_get_state() == 0) {
+                ESP_LOGI(TAG, "传感器检测到状态为0，停止电机");
+                break;
+            }
+            vTaskDelay(delay_ticks);
+            elapsed_ticks += delay_ticks;
+        }
+    } else if (check_sensor == 0) {
+        vTaskDelay(pdMS_TO_TICKS((uint32_t)(time_sec * 1000)));
+    }
+    ESP_LOGI(TAG, "到达校准位，停止电机");
+    // 停止PWM
+    Rotate_motor_stop();
+    Rotate_motor_enable(0);
 }

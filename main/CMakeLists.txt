@@ -19,7 +19,8 @@ idf_component_register(
             "Sensor_motor_control/LeftRight/LeftRight_motor_control.c"
             "Sensor_motor_control/UpDown/UpDown_motor_control.c"
 
-            "Status/Calibration.c"
+            "Status/HMI.c"
+            "Status/Machine_initialization.c"
             "Status/Instrument_starts_canning.c"
 
 
