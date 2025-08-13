@@ -116,6 +116,13 @@ static bool modbus_read_single_register(uint16_t reg_addr, uint16_t *value) {
 
 
 void LeftRight_init(void) {
+    static bool uart_initialized = false;
+
+    if (uart_initialized) {
+        // 已经初始化过，直接返回
+        return;
+    }
+
     uart_config_t uart_config = {
             .baud_rate = LeftRight_RS485_BAUDRATE,
             .data_bits = UART_DATA_8_BITS,
@@ -132,6 +139,7 @@ void LeftRight_init(void) {
     // 半双工模式
     ESP_ERROR_CHECK(uart_set_mode(LeftRight_UART_NUM, UART_MODE_RS485_HALF_DUPLEX));
     ESP_LOGI(TAG, "LeftRight UART initialized.\n");
+    uart_initialized = true; // 标记已经初始化过
 }
 
 
@@ -168,7 +176,8 @@ void LeftRight_set_speed_Mode(uint16_t Mode) {
     ESP_LOGI(TAG, "当前电机处于速度模式 \n");
 }
 
-// ====== 示例：速度模式寄存器 ======                         位置模式未启用
+
+// ====== 示例：位置模式寄存器 ======
 void LeftRight_set_Location_Mode(uint16_t Mode) {
     ESP_LOGI(TAG, "---   伺服电机模式: 位置 reg 值 ---");
     LeftRight_modbus_write_single_register(0x02, Mode);
@@ -196,6 +205,7 @@ void LeftRight_Clear_the_fault(void) {
     ESP_LOGI(TAG, "----- 伺服电机清除故障 -----\n");
 }
 
+// ====== 示例：清除故障伺服电机 ======
 
 // ====== 示例：测试电机函数     伺服电机左右循环移动 ======
 void LeftRight_Test(void) {
@@ -220,4 +230,6 @@ void LeftRight_Test(void) {
         LeftRight_Stop();                   //停止伺服电机
         LeftRight_Clear_the_fault();        //清除故障
     }
+
+
 }

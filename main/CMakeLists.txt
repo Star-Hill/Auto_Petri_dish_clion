@@ -2,8 +2,9 @@ idf_component_register(
         SRCS                            #自己写的文件需引入
             "Auto_Petri_dish_clion.c"
             "DM430/UpDown.c"
-            "DM430/Rotate.c"
+            "DM430/Big_Rotate.c"
             "DM430/Little_Rotate.c"
+            "DM430/Universal_stepper_motor_drive.c"
 
             "RS485/LeftRight.c"
             "RS485/Peristaltic_pump.c"
@@ -17,7 +18,6 @@ idf_component_register(
             "Pump_and_Valve/Pump_Valve_driver.c"
 
             "Sensor_motor_control/LeftRight/LeftRight_motor_control.c"
-            "Sensor_motor_control/UpDown/UpDown_motor_control.c"
 
             "Status/HMI.c"
             "Status/Machine_initialization.c"
@@ -28,7 +28,6 @@ idf_component_register(
             "."
             "DM430"
             "Sensor"
-            "Sensor_motor_control/UpDown"
             "Sensor_motor_control/LeftRight"
             "RS485"
             "Pump_and_Valve"

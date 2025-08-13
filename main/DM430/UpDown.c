@@ -3,85 +3,122 @@
 //
 
 #include "UpDown.h"
-#include "freertos/FreeRTOS.h"
-#include "driver/gpio.h"
-#include "esp_log.h"
 
-#define TAG "UpDownMotor"
+static const char *TAG = "UpDown_STEPPER_CTRL";
 
-void UpDown_motor_driver_init(void) {
-    // 配置 EN 和 DIR GPIO
+// 步进电机初始化
+void UpDown_stepper_init(void) {
+    // STEP 引脚配置为 PWM
+    ledc_timer_config_t timer_conf = {
+            .speed_mode       = UpDown_STEPPER_PWM_MODE,
+            .timer_num        = UpDown_STEPPER_PWM_TIMER,
+            .duty_resolution  = UpDown_STEPPER_PWM_RESOLUTION,
+            .freq_hz          = UpDown_STEPPER_PWM_FREQ_HZ,             // 占位初始值，运行时会更新
+            .clk_cfg          = LEDC_USE_APB_CLK                        // 直接指定 80 MHz APB
+    };
+    ledc_timer_config(&timer_conf);
+
+    ledc_channel_config_t channel_conf = {
+            .gpio_num       = UpDown_STEPPER_STEP_GPIO,
+            .speed_mode     = UpDown_STEPPER_PWM_MODE,
+            .channel        = UpDown_STEPPER_PWM_CHANNEL,
+            .timer_sel      = UpDown_STEPPER_PWM_TIMER,
+            .duty           = 0,
+            .hpoint         = 0
+    };
+    ledc_channel_config(&channel_conf);
+
+    // DIR 和 EN 引脚
     gpio_config_t io_conf = {
-            .intr_type = GPIO_INTR_DISABLE,
             .mode = GPIO_MODE_OUTPUT,
-            .pin_bit_mask = (1ULL << UpDown_STEPPER_EN_GPIO) | (1ULL << UpDown_STEPPER_DIR_GPIO),
-            .pull_down_en = GPIO_PULLDOWN_DISABLE,
-            .pull_up_en = GPIO_PULLUP_DISABLE,
+            .pin_bit_mask = (1ULL << UpDown_STEPPER_DIR_GPIO) | (1ULL << UpDown_STEPPER_EN_GPIO),
     };
     gpio_config(&io_conf);
 
-    // 初始化 LEDC（PWM）用于 PUL 脉冲输出
-    ledc_timer_config_t ledc_timer = {
-            .duty_resolution = UpDown_STEPPER_PWM_RESOLUTION,
-            .freq_hz = UpDown_STEPPER_PWM_FREQ_HZ,
-            .speed_mode = UpDown_STEPPER_PWM_MODE,
-            .timer_num = UpDown_STEPPER_PWM_TIMER,
-            .clk_cfg = LEDC_AUTO_CLK
-    };
-    ledc_timer_config(&ledc_timer);
-
-    ledc_channel_config_t ledc_channel = {
-            .channel    = UpDown_STEPPER_PWM_CHANNEL,
-            .duty       = 0,
-            .gpio_num   = UpDown_STEPPER_PUL_GPIO,
-            .speed_mode = UpDown_STEPPER_PWM_MODE,
-            .hpoint     = 0,
-            .timer_sel  = UpDown_STEPPER_PWM_TIMER,
-            .flags.output_invert = 0
-    };
-    ledc_channel_config(&ledc_channel);
-
-    //ESP_LOGI(TAG, "UpDown_MOTOR driver initialized.");
+    // 默认失能
+    gpio_set_level(UpDown_STEPPER_EN_GPIO, 0);
 }
 
-void UpDown_motor_set_direction(int dir) {
-    gpio_set_level(UpDown_STEPPER_DIR_GPIO, dir);
-}
+/*
+ * 角度 + 转速控制函数
+ * dir 1 上  0 下
+ * check_sensor :   0--不检测      1--检测上位置    2--检测下位置
+ * */
+void UpDown_stepper_rotate(float angle_deg, float rpm, int dir, int check_sensor) {
+    // 计算需要的步数
+    float steps_needed = (angle_deg / 360.0f) * UpDown_STEPS_PER_REV;
 
-void UpDown_motor_enable(int enable) {
-    gpio_set_level(UpDown_STEPPER_EN_GPIO, enable);
-}
+    // 计算 PWM 频率
+    float pwm_freq = (rpm / 60.0f) * UpDown_STEPS_PER_REV;
 
-void UpDown_motor_set_speed(uint32_t duty) {
-    if (duty > (1 << UpDown_STEPPER_PWM_RESOLUTION)) {
-        duty = (1 << UpDown_STEPPER_PWM_RESOLUTION);
-    }
-    ledc_set_duty(UpDown_STEPPER_PWM_MODE, UpDown_STEPPER_PWM_CHANNEL, duty);
+    // 运行时间（秒）
+    float run_time_sec = steps_needed / pwm_freq ;
+
+    ESP_LOGI(TAG, "Angle=%.1f deg, RPM=%.1f, Freq=%.2f Hz, Time=%.3f s",
+             angle_deg, rpm, pwm_freq, run_time_sec);
+
+    // 设置方向
+    gpio_set_level(UpDown_STEPPER_DIR_GPIO, dir ? 1 : 0);
+    // 使能
+    gpio_set_level(UpDown_STEPPER_EN_GPIO, 1);
+    // 设置 PWM 频率
+    ledc_set_freq(UpDown_STEPPER_PWM_MODE, UpDown_STEPPER_PWM_TIMER, (uint32_t) pwm_freq);
+    // 启动 PWM
+    ledc_set_duty(UpDown_STEPPER_PWM_MODE, UpDown_STEPPER_PWM_CHANNEL, UpDown_STEPPER_PWM_DUTY);
     ledc_update_duty(UpDown_STEPPER_PWM_MODE, UpDown_STEPPER_PWM_CHANNEL);
-}
 
-void UpDown_motor_start(void) {
-    UpDown_motor_set_speed(UpDown_STEPPER_PWM_DUTY); // 启动默认速度
-}
+    /*
+     * 找到上限位置
+     * */
+    if (check_sensor == 1) {
+        // 记录开始时间
+        TickType_t start_ticks = xTaskGetTickCount();
 
-void UpDown_motor_stop(void) {
-    UpDown_motor_set_speed(0);  // 占空比为0，停止输出脉冲
-}
+        // 循环检测传感器状态，期间延时小段时间，模拟非阻塞等待
+        const TickType_t delay_ticks = pdMS_TO_TICKS(10); // 10ms检测一次
+        TickType_t elapsed_ticks = 0;
+        TickType_t total_ticks = pdMS_TO_TICKS((uint32_t) (run_time_sec * 1000));
 
-void UpDown_motor_test(void) {
-    /* ***********    上下电机测试   ************ */
-    UpDown_motor_driver_init();
-    UpDown_motor_enable(1);              // 1--使能   0--失能
+        while (elapsed_ticks < total_ticks) {
+            if (sensor_Up_get_state() == 0) {
+                // 计算运行时间
+                TickType_t end_ticks = xTaskGetTickCount();
+                float run_time_ms = (end_ticks - start_ticks) * portTICK_PERIOD_MS / 1000.0f;
 
-    UpDown_motor_set_direction(0);          // 设置方向     0--下  1--上
-    UpDown_motor_start();                       // 开始转动
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    UpDown_motor_stop();                        // 停止
+                // 根据时间和频率计算步数
+                float steps_moved = run_time_ms * pwm_freq;
+                // 计算角度
+                float moved_angle = (steps_moved / UpDown_STEPS_PER_REV) * 360.0f;
+                ESP_LOGI(TAG, "到达上限位置，运行了 %.3f 秒，转了 %.2f 度", run_time_ms, moved_angle);
 
-    vTaskDelay(pdMS_TO_TICKS(1000));        //等一秒
 
-    UpDown_motor_set_direction(1);          // 设置方向     0--下  1--上
-    UpDown_motor_start();                       // 开始转动
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    UpDown_motor_stop();                        // 停止
+                ESP_LOGI(TAG, "到达上限位置 传感器检测到状态为0，停止电机");
+                break;
+            }
+            vTaskDelay(delay_ticks);
+            elapsed_ticks += delay_ticks;
+        }
+    }
+    /*
+     * 找到下限位置
+     * */
+    else if (check_sensor == 2) {
+        while (1) {
+            if (sensor_Down_get_state() == 0) {
+                ESP_LOGI(TAG, "到达下限位置 传感器检测到状态为0，停止电机");
+                break;
+            }
+        }
+    }
+    else if (check_sensor == 0) {
+        vTaskDelay(pdMS_TO_TICKS((uint32_t)(run_time_sec * 1000)));
+    }
+    ESP_LOGI(TAG, "到达校准位，停止电机");
+    // 停止 PWM
+    ledc_set_duty(UpDown_STEPPER_PWM_MODE, UpDown_STEPPER_PWM_CHANNEL, 0);
+    ledc_update_duty(UpDown_STEPPER_PWM_MODE, UpDown_STEPPER_PWM_CHANNEL);
+
+    // 失能
+    gpio_set_level(UpDown_STEPPER_EN_GPIO, 0);
+
 }

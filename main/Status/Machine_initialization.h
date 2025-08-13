@@ -8,8 +8,8 @@
 #include "sensor.h"
 #include "UpDown.h"
 #include "LeftRight.h"
-#include "Rotate.h"
+#include "Big_Rotate.h"
 
-int Machine_initialization();
+void Machine_initialization();
 
 #endif //AUTO_PETRI_DISH_CLION_MACHINE_INITIALIZATION_H

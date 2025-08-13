@@ -5,7 +5,6 @@
 #include "HMI_control_driver.h"
 #include "Pump_driver.h"
 #include "Valve_driver.h"
-#include "UpDown_motor_control.h"
 
 #include "esp_log.h"
 #include "string.h"
@@ -53,7 +52,7 @@ void HMI_control_driver_test(void) {
             ESP_LOGI(TAG, "收到数据：%.*s", len, data);
 
             if (strstr((char*)data, "UpDown_motor_auto_loop")) {
-                UpDown_motor_auto_loop();
+/*                UpDown_motor_auto_loop();*/
             }
         }
 

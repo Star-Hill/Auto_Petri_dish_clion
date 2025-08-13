@@ -53,14 +53,9 @@ static void command_execute_task(void *pvParameters) {
             ESP_LOGI(TAG, "执行命令: %s", cmd_buf);
 
             if (strstr(cmd_buf, "Start_assembly") != NULL) {
-                int ret = Machine_initialization();
-                if (ret == 1) {
                     ESP_LOGI(TAG, "初始化成功，开始装配！");
                     Instrument_starts_canning();            //  开始装配
-                } else {
-                    ESP_LOGW(TAG, "初始化失败！");
                 }
-            }
             if (strstr(cmd_buf, "debugging") != NULL) {
                 LeftRight_Clear_the_fault();
                 LeftRight_set_speed_Mode(0xC4);
