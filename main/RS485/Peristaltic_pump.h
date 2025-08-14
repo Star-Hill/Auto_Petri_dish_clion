@@ -68,5 +68,8 @@ void Peristaltic_pump_Cleaning(bool enable);
  */
 void Peristaltic_pump_Test(void);
 
+// 运行蠕动泵一段时间
+void Peristaltic_pump_Run(uint32_t speed, uint32_t run_time_s);
+
 
 #endif //AUTO_PETRI_DISH_CLION_PERISTALTIC_PUMP_H

@@ -5,6 +5,7 @@
 #include "Instrument_starts_canning.h"
 
 
+
 // 全局变量计数，或者用信号量
 int task_done_count = 0;
 
@@ -38,11 +39,10 @@ void All_init(void) {
     UpDown_stepper_init();                  //  初始化并使能升降电机
     LeftRight_init();                       //  左右电机初始化
 
-    Peristaltic_pump_init();                //  蠕动泵
+    Peristaltic_pump_init();               //  蠕动泵
 
     Pump_driver_init();                     //  泵初始化
     valve_UpDown_driver_init();             //  电磁阀初始化
-    command_handler_init();                 //  初始化命令处理系统
 }
 
 // 函数返回值：1 表示成功取到培养皿，0 表示失败

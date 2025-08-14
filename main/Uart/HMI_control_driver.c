@@ -49,7 +49,18 @@ void HMI_control_driver_test(void) {
     while (1) {
         int len = uart_hmi_read(data, sizeof(data));
         if (len > 0) {
-            ESP_LOGI(TAG, "收到数据：%.*s", len, data);
+            // 创建一个干净的字符串缓冲
+            char filtered[32];
+            int j = 0;
+
+            for (int i = 0; i < len && j < sizeof(filtered) - 1; i++) {
+                if (data[i] >= 0x20 && data[i] <= 0x7E) { // 只保留可见ASCII字符
+                    filtered[j++] = data[i];
+                }
+            }
+            filtered[j] = '\0';
+
+            ESP_LOGI(TAG, "收到数据：%s", filtered);
 
             if (strstr((char*)data, "UpDown_motor_auto_loop")) {
 /*                UpDown_motor_auto_loop();*/

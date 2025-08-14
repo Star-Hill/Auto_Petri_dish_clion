@@ -28,7 +28,5 @@
 
 void app_main(void) {
     All_init();
-    Machine_initialization();           //回零点
-    Instrument_starts_canning();        //开始罐装
-
+    command_handler_init();                 //  初始化命令处理系统
 }

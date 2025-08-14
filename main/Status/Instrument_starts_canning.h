@@ -18,6 +18,7 @@
 #include "Peristaltic_pump.h"
 #include "Little_Rotate.h"
 #include "HMI.h"
+#include "HMI_control_driver.h"
 
 #include "Machine_initialization.h"
 

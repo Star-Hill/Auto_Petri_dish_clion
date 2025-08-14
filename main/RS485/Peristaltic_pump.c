@@ -76,7 +76,7 @@ static void Peristaltic_pump_modbus_write_single_register(uint16_t reg_addr, uin
  * @param[out] value 读取到的值
  * @return true 成功，false 失败
  */
-static bool Peristaltic_pump_modbus_read_single_register(uint16_t reg_addr, uint16_t *value) {
+__attribute__((unused)) static bool Peristaltic_pump_modbus_read_single_register(uint16_t reg_addr, uint16_t *value) {
     uint8_t frame[8];
     frame[0] = Peristaltic_pump_SLAVE_ADDR;                      // 从站地址
     frame[1] = Peristaltic_pump_MODBUS_READ_SINGLE_REGISTER;     // 功能码 0x03
@@ -183,8 +183,9 @@ void Peristaltic_pump_Control(bool enable) {
     }
 }
 
-// ====== 示例：启动蠕动泵  停止蠕动泵 ======
+// ====== 示例：启动蠕动泵进行全速清洗   ======
 void Peristaltic_pump_Cleaning(bool Cleaning_Speed) {
+    Peristaltic_pump_Control(1);                   //启动蠕动泵
     uint16_t reg_addr = 3103;  // 寄存器地址
 
     ESP_LOGI(TAG, "--- 蠕动泵运行状态模式: 寄存器(十进制:%u, 十六进制:0x%04X) ---", reg_addr, reg_addr);
@@ -192,11 +193,23 @@ void Peristaltic_pump_Cleaning(bool Cleaning_Speed) {
     if (Cleaning_Speed) {
         ESP_LOGI(TAG, "--- 蠕动泵当前全速清洗 ---");
         Peristaltic_pump_modbus_write_single_register(reg_addr, 0x01);
+        vTaskDelay(pdMS_TO_TICKS(10000));       //十秒
     } else {
         ESP_LOGI(TAG, "--- 蠕动泵当前正常速度清洗 ---");
         Peristaltic_pump_modbus_write_single_register(reg_addr, 0x00);
+        vTaskDelay(pdMS_TO_TICKS(10000));       //十秒
     }
+    Peristaltic_pump_Control(0);                   //停止蠕动泵
 }
+
+// 运行蠕动泵一段时间
+void Peristaltic_pump_Run(uint32_t speed, uint32_t run_time_s) {
+    Peristaltic_pump_Control(1);          // 启动蠕动泵
+    Peristaltic_pump_set_speed(speed);    // 设置速度
+    vTaskDelay(pdMS_TO_TICKS(run_time_s * 1000)); // 延时运行
+    Peristaltic_pump_Control(0);          // 停止蠕动泵
+}
+
 
 // ====== 示例：测试蠕动泵函数     蠕动泵正转反转 ======
 void Peristaltic_pump_Test(void) {
