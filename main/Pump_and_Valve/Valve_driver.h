@@ -12,7 +12,7 @@
 #define Valve_Up_GPIO    11
 
 // 初始化函数
-void valve_UpDown_driver_init(void);
+void valve_driver_init(void);
 
 // 控制函数
 void Valve_Down_on(void);

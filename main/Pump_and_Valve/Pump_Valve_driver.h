@@ -15,10 +15,7 @@ extern "C" {
 /// 联动测试程序（循环测试上下组合）
 void Pump_Valve_test(void);
 
-/// 控制上下泵+阀组合运行
-/// @param is_up 是否为上泵（true为上，false为下）
-/// @param duration_ms 工作时间（毫秒）
-void Pump_Valve_run_combo(bool is_up, uint32_t duration_ms);
+void Pump_Valve_run_combo(bool up_down, bool on_off);
 
 #ifdef __cplusplus
 }

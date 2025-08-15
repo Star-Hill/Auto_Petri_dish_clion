@@ -19,6 +19,7 @@
 #include "Little_Rotate.h"
 #include "HMI.h"
 #include "HMI_control_driver.h"
+#include "Pump_Valve_driver.h"
 
 #include "Machine_initialization.h"
 
