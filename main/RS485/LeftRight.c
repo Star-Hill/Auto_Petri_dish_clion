@@ -205,31 +205,23 @@ void LeftRight_Clear_the_fault(void) {
     ESP_LOGI(TAG, "----- 伺服电机清除故障 -----\n");
 }
 
-// ====== 示例：清除故障伺服电机 ======
+// ====== 示例：集成代码伺服电机 ======
+static const char *TAG_SYSTEM = "SYSTEM--Notice";
 
-// ====== 示例：测试电机函数     伺服电机左右循环移动 ======
-void LeftRight_Test(void) {
-    LeftRight_init();                   //左右电机初始化
-    LeftRight_read_Voltage();           //输出当前驱动器的电压值
-    LeftRight_read_Electric_current();  //读取当前驱动器的电流值
+void LeftRight_Move_To_Position(SensorFunc sensor_get_state, int speed, const char *desc)
+{
+    LeftRight_Clear_the_fault();
+    LeftRight_set_speed_Mode(0xC4);
+    LeftRight_Start();
 
-    while (1) {
-        LeftRight_Clear_the_fault();        //清除故障
-        LeftRight_set_speed_Mode(0Xc4);//伺服电机速度模式
-        LeftRight_Start();                  //启动伺服电机
+    ESP_LOGI(TAG_SYSTEM, "左右电机移动到%s", desc);
+    LeftRight_set_speed(speed);
 
-        LeftRight_set_speed(-200);      //左移
-        vTaskDelay(pdMS_TO_TICKS(2000));
-        LeftRight_set_speed(0);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-
-        LeftRight_set_speed(200);      //右移
-        vTaskDelay(pdMS_TO_TICKS(2000));
-        LeftRight_set_speed(0);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        LeftRight_Stop();                   //停止伺服电机
-        LeftRight_Clear_the_fault();        //清除故障
+    while (sensor_get_state() != 0) {
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 
-
+    LeftRight_set_speed(0);
+    ESP_LOGI(TAG_SYSTEM, "左右电机到达%s", desc);
 }
+

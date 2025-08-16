@@ -14,7 +14,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
-
+#include <errno.h>
 
 /*
  * 本地库
@@ -22,6 +22,8 @@
 #include "softserial.h"
 #include "Machine_initialization.h"
 
+// 外部可见的暂停变量
+extern volatile bool g_pause_flag;
 
 // 队列最大命令长度
 #define CMD_MAX_LEN 64

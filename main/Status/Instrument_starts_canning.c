@@ -36,31 +36,36 @@ void All_init(void) {
     Little_stepper_init();                  //  培养皿旋转电机
     UpDown_stepper_init();                  //  初始化并使能升降电机
     LeftRight_init();                       //  左右电机初始化
-    Peristaltic_pump_init();               //  蠕动泵
+    Peristaltic_pump_init();                //  蠕动泵
     Pump_driver_init();                     //  泵初始化
-    valve_driver_init();             //  电磁阀初始化
+    valve_driver_init();                    //  电磁阀初始化
 }
 
 // 函数返回值：1 表示成功取到培养皿，0 表示失败
-int check_and_pick_plate(void) {
+int check_and_pick_plate(float gear) {
     /****************   升降电机--吸取位置    *******************/
-    UpDown_stepper_rotate(800.0f, 50.0f, 1, 0);
+    UpDown_stepper_rotate(800.0f, 50.0f * gear, 1, 0);
+    check_pause();
 
     /***************   打开下磁阀和气泵电机    ******************/
     Pump_Valve_run_combo(0, 1);
+    check_pause();
 
     /****************   左右电机--取出后移动中位置    *******************/
-    LeftRight_Clear_the_fault();         // 清除故障
-    LeftRight_set_speed_Mode(0xC4);     // 设置伺服电机速度模式
-    LeftRight_Start();                   // 启动左右伺服电机
+    LeftRight_Clear_the_fault();             // 清除故障
+    LeftRight_set_speed_Mode(0xC4);    // 设置伺服电机速度模式
+    LeftRight_Start();                       // 启动左右伺服电机
     // 取出后左移
-    LeftRight_set_speed(-400);            // 左移
+    LeftRight_set_speed(-400);           // 左移
     /*
      * 培养皿检测
      * */
     // 检测是否取到培养皿
     TickType_t startTick = xTaskGetTickCount();  // 在这里定义一次
-    const TickType_t timeoutTicks = pdMS_TO_TICKS(4000); // 4秒
+    /*
+     * 如果入口传感器精准的话      这个检测时间是可以实现动态的
+     * */
+    const TickType_t timeoutTicks = pdMS_TO_TICKS(4 * 1000); // 4秒
 
     while (sensor_Entrance_get_state() != 0) {
         if ((xTaskGetTickCount() - startTick) > timeoutTicks) {
@@ -97,28 +102,22 @@ int check_and_pick_plate(void) {
 /*
  * 成功后的操作
  * */
-void Success(void) {
+void Success(float gear) {
     /************************   升降电机--上限位置    ***************************/
-    UpDown_stepper_rotate(600.0f, 50.0f, 1, 1);      //上移动检测上传感器
+    UpDown_stepper_rotate(600.0f, 50.0f * gear, 1, 1);      //上移动检测上传感器
+    check_pause();
 
     /***************   打开上磁阀和上气泵电机    ******************/
     Pump_Valve_run_combo(1, 1);
+    check_pause();
 
     /************************   升降电机--中限位置    ***************************/
-    UpDown_stepper_rotate(400.0f, 50.0f, 0, 0);      //上下电机开盖位置
+    UpDown_stepper_rotate(400.0f, 50.0f * gear, 0, 0);      //上下电机开盖位置
+    check_pause();
 
     /****************   左右电机--左位置    *******************/
-    LeftRight_Clear_the_fault();
-    LeftRight_set_speed_Mode(0xC4);
-    LeftRight_Start();
-    ESP_LOGI(TAG_SYSTEM, "左右电机右移到最左位置");
-    LeftRight_set_speed(-600);
-
-    while (sensor_Left_get_state() != 0) {
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-    LeftRight_set_speed(0);
-    ESP_LOGI(TAG_SYSTEM, "左右电机到达最左限位");
+    LeftRight_Move_To_Position(sensor_Left_get_state, -600 * gear, "最左位置");
+    check_pause();
 
     /****************   蠕动泵输出营养液  电机旋转  *******************/
     task_done_count = 0;
@@ -129,62 +128,53 @@ void Success(void) {
     while (task_done_count < 2) {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
+    check_pause();
 
-    /****************   左右电机--左-->中位置   逆时针   *******************/
+    /****************   小旋转电机--左-->中位置   逆时针   *******************/
     Little_stepper_rotate(360.0f, 60.0f, 0);
+    check_pause();
     ESP_LOGI(TAG_SYSTEM, "旋转培养皿开始逆时针旋转");
 
     /****************   左右电机--中位置    *******************/
-    LeftRight_Clear_the_fault();
-    LeftRight_set_speed_Mode(0xC4);
-    LeftRight_Start();
-    ESP_LOGI(TAG_SYSTEM, "左右电机右移到中间位置");
-    LeftRight_set_speed(400);
-
-    while (sensor_Middle_get_state() != 0) {
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-    LeftRight_set_speed(0);
-
-    ESP_LOGI(TAG_SYSTEM, "左右电机到达中间限位");
+    LeftRight_Move_To_Position(sensor_Middle_get_state, 400 * gear, "中间位置");
+    check_pause();
 
     /************************   升降电机--上限位置    ***************************/
-    UpDown_stepper_rotate(600.0f, 50.0f, 1, 1);      //上移动检测上传感器
+    UpDown_stepper_rotate(600.0f, 50.0f * gear, 1, 1);      //上移动检测上传感器
+    check_pause();
 
     /***************   关闭上磁阀和上气泵电机    ******************/
     Pump_Valve_run_combo(1, 0);
+    check_pause();
 
     /************************   升降电机--下限位置    ***************************/
-    UpDown_stepper_rotate(1290.0f, 50.0f, 0, 0);
+    UpDown_stepper_rotate(1290.0f, 50.0f * gear, 0, 0);
+    check_pause();
 
     /****************   柱体电机--转45度  罐装完毕的柱体    *******************/
-    Big_ROTATE_stepper_rotate(45.0f, 120.0f, 1, 0);
+    Big_ROTATE_stepper_rotate(45.0f, 120.0f * gear, 1, 0);
+    check_pause();
     ESP_LOGI(TAG_SYSTEM, "移动到罐装完毕的柱体");
 
     /****************   左右电机--右位置    *******************/
-    LeftRight_Clear_the_fault();
-    LeftRight_set_speed_Mode(0xC4);
-    LeftRight_Start();
-    ESP_LOGI(TAG_SYSTEM, "左右电机右移到最右位置");
-    LeftRight_set_speed(400);
-
-    while (sensor_Right_get_state() != 0) {
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-    LeftRight_set_speed(0);
-    ESP_LOGI(TAG_SYSTEM, "左右电机到达最右边限位");
+    LeftRight_Move_To_Position(sensor_Right_get_state, 400 * gear, "最右位置");
+    check_pause();
 
     /************************   升降电机--上限位置    ***************************/
-    UpDown_stepper_rotate(2000.0f, 50.0f, 1, 1);      //上移动检测上传感器
+    UpDown_stepper_rotate(2000.0f, 50.0f * gear, 1, 1);      //上移动检测上传感器
+    check_pause();
 
     /***************   关闭下磁阀和下气泵电机    ******************/
     Pump_Valve_run_combo(0, 0);
+    check_pause();
 
     /************************   升降电机--下限位置    ***************************/
-    UpDown_stepper_rotate(1290.0f, 50.0f, 0, 0);        //到达最低
+    UpDown_stepper_rotate(1290.0f, 50.0f * gear, 0, 0);        //到达最低
+    check_pause();
 
     /****************   柱体电机--转-45度  空盒子    *******************/
-    Big_ROTATE_stepper_rotate(45.0f, 120.0f, 0, 0);
+    Big_ROTATE_stepper_rotate(45.0f, 120.0f * gear, 0, 0);
+    check_pause();
 
 }
 
@@ -193,54 +183,67 @@ void Success(void) {
  * */
 int column_Failure_Num = 1;
 
-void Failure(void) {
+void Failure(float gear) {
     ESP_LOGW(TAG_SYSTEM, "当前柱体无空培养皿了");
 
     /***************   关闭下磁阀和气泵电机    ******************/
     Pump_Valve_run_combo(0, 0);
+    check_pause();
 
     /************************   升降电机--下限位置    ***************************/
-    UpDown_stepper_rotate(800.0f, 50.0f, 0, 0);     //dir = 0 向下移动
+    UpDown_stepper_rotate(800.0f, 50.0f * gear, 0, 0);     //dir = 0 向下移动
+    check_pause();
 
     /****************   柱体电机--转90度位置    *******************/
     if (column_Failure_Num == 2) {
-        Big_ROTATE_stepper_rotate(90.0f, 120.0f, 1, 0);
+        Big_ROTATE_stepper_rotate(90.0f, 120.0f * gear, 1, 0);
         column_Failure_Num = 1;
     } else {
         column_Failure_Num++;
     }
+    check_pause();
 
     /****************   左右电机--右位置    *******************/
-    LeftRight_Clear_the_fault();
-    LeftRight_set_speed_Mode(0xC4);
-    LeftRight_Start();
-    ESP_LOGI(TAG_SYSTEM, "左右电机右移到最右位置");
-    LeftRight_set_speed(400);
+    LeftRight_Move_To_Position(sensor_Right_get_state, 400 * gear, "最右位置");
+    check_pause();
 
-    while (sensor_Right_get_state() != 0) {
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
-    LeftRight_set_speed(0);
-    ESP_LOGI(TAG_SYSTEM, "左右电机到达最右边限位");
 }
 
+/*
+ * 数量,体积,挡位
+ * */
+void Instrument_starts_canning(int num, int volume, float gear) {
+    int produced_count = 0;   // 已经制作的数量
 
-void Instrument_starts_canning(void) {
     for (int column = 0; column < 4; column++) {  // 4个柱子
         int failCount_single_column = 0;  // 单个柱子的失败计数
 
         ESP_LOGI(TAG_SYSTEM, "开始检测第 %d 根柱子", column + 1);
 
         for (int attempt = 0; attempt < 2; attempt++) { // 每根柱子检测2次
-            int result = check_and_pick_plate();
+            int result = check_and_pick_plate(gear);
             if (result == 1) { // 成功
-                Success();
+                Success(gear);
                 failCount_single_column = 0; // 成功就清零
+                produced_count++;   // 成功制作一个培养皿
                 ESP_LOGI(TAG_SYSTEM, "第 %d 根柱子第 %d 次检测成功", column + 1, attempt + 1);
+                ESP_LOGI(TAG_SYSTEM, "累计完成数量: %d / %d", produced_count, num);
+
+                //发送剩余数量到串口屏
+                int remaining_count = num - produced_count;
+                char cmd[32];
+                snprintf(cmd, sizeof(cmd), "n0.val=%d", remaining_count);
+                software_uart_tx_str(uart, cmd);
+                ESP_LOGI(TAG_SYSTEM, "发送更新命令到串口屏: %s", cmd);
+
+                if (produced_count >= num) {
+                    ESP_LOGI(TAG_SYSTEM, "已完成目标数量 %d，停止装配", num);
+                    return; // 直接退出函数
+                }
                 break; // 成功一次就不再检测该柱子，直接下一根
             }
             if (result == 0) { // 失败
-                Failure();
+                Failure(gear);
                 failCount_single_column++;
                 ESP_LOGW(TAG_SYSTEM, "第 %d 根柱子第 %d 次检测失败", column + 1, attempt + 1);
             }
@@ -251,6 +254,14 @@ void Instrument_starts_canning(void) {
         }
         ESP_LOGI(TAG_SYSTEM, "第 %d 根柱子检测结束", column + 1);
     }
-    ESP_LOGI(TAG_SYSTEM, "全部柱子检测完毕");
+    ESP_LOGI(TAG_SYSTEM, "全部柱子检测完毕 (总完成数量: %d / %d)", produced_count, num);
 }
 
+void check_pause(void) {
+    ESP_LOGI("CANNING", "check_pause: 当前 g_pause_flag=%d", g_pause_flag);
+    while (g_pause_flag) {
+        ESP_LOGI("CANNING", "暂停中，等待继续... g_pause_flag=%d", g_pause_flag);
+        vTaskDelay(pdMS_TO_TICKS(200));
+    }
+    ESP_LOGI("CANNING", "继续运行, g_pause_flag=%d", g_pause_flag);
+}

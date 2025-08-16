@@ -10,6 +10,6 @@
 #include "LeftRight.h"
 #include "Big_Rotate.h"
 
-void Machine_initialization();
+void Machine_initialization(float gear);
 
 #endif //AUTO_PETRI_DISH_CLION_MACHINE_INITIALIZATION_H

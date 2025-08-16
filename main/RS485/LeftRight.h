@@ -80,10 +80,9 @@ void LeftRight_Stop(void);
 void LeftRight_Clear_the_fault(void);
 
 /**
- * @brief 测试电机运行流程
- *
- * 包含：初始化 → 读取电压/电流 → 启动 → 设置速度模式 → 设置转速 → 停止 → 清除故障
+ * @brief 集成代码伺服电机
  */
-void LeftRight_Test(void);
+typedef int (*SensorFunc)(void);  // 定义传感器函数指针类型
+void LeftRight_Move_To_Position(SensorFunc sensor_get_state, int speed, const char *desc);
 
 #endif //AUTO_PETRI_DISH_CLION_LEFTRIGHT_H

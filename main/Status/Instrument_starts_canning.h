@@ -9,29 +9,37 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "sensor.h"
-#include "UpDown.h"
-#include "LeftRight.h"
-#include "Big_Rotate.h"
-#include "Pump_driver.h"
-#include "Valve_driver.h"
-#include "Peristaltic_pump.h"
-#include "Little_Rotate.h"
-#include "HMI.h"
-#include "HMI_control_driver.h"
-#include "Pump_Valve_driver.h"
+/***************    单元驱动    ***************/
+#include "sensor.h"                 //传感器
+#include "UpDown.h"                 //上下步进电机
+#include "LeftRight.h"              //左右伺服电机
+#include "Big_Rotate.h"             //培养皿架旋转
+#include "Little_Rotate.h"          //培养皿旋转
+#include "Pump_driver.h"            //气泵
+#include "Valve_driver.h"           //电磁阀
+#include "Peristaltic_pump.h"       //蠕动泵
 
-#include "Machine_initialization.h"
+#include "HMI.h"                    //串口屏
+#include "HMI_control_driver.h"     //软串口底层
+
+/***************    组合驱动    ***************/
+#include "Pump_Valve_driver.h"      //电磁阀 & 气泵一体化
+#include "Machine_initialization.h" //回零
 
 
+void Instrument_starts_canning(int num, int volume, float gear);
 
-void Instrument_starts_canning(void);
-int check_and_pick_plate(void);
+int check_and_pick_plate(float gear);
 
 
 void All_init(void);
-void Success (void);
-void Failure (void);
+
+void Success(float gear);
+
+void Failure(float gear);
+
+// 检查是否需要暂停（封装函数）
+void check_pause(void);
 
 
 #endif //AUTO_PETRI_DISH_CLION_INSTRUMENT_STARTS_CANNING_H
