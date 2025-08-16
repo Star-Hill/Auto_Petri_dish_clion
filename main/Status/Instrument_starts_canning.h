@@ -27,14 +27,14 @@
 #include "Machine_initialization.h" //回零
 
 
-void Instrument_starts_canning(int num, int volume, float gear);
+void Instrument_starts_canning(int num, int volume, float gear, int rpm);
 
 int check_and_pick_plate(float gear);
 
 
 void All_init(void);
 
-void Success(float gear);
+void Success(float gear,int volume,int rpm);
 
 void Failure(float gear);
 

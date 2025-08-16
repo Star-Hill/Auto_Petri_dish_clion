@@ -21,7 +21,7 @@ QueueHandle_t command_queue = NULL;
  * */
 volatile bool g_pause_flag = false;   // 是否暂停
 
-
+SoftwareUART g_uart;   // 全局串口变量
 // 串口接收任务
 static void uart_receive_task(void *pvParameters) {
     SoftwareUART uart = {
@@ -43,10 +43,10 @@ static void uart_receive_task(void *pvParameters) {
             ESP_LOGI(TAG, "收到字符串: %s", recv_str);
             // 检测命令并放入队列
             if (strstr(recv_str, "Return_to_zero") != NULL ||
-                strstr(recv_str, "Start_canning") != NULL   ||
+                strstr(recv_str, "Start_canning") != NULL ||
                 strstr(recv_str, "Liquid_line_purging") != NULL ||
                 strstr(recv_str, "Pipeline_Cleaning") != NULL
-                ) {
+                    ) {
                 xQueueSend(command_queue, recv_str, portMAX_DELAY);
             }
             if (strstr(recv_str, "stop") != NULL) {
@@ -104,9 +104,9 @@ static void command_execute_task(void *pvParameters) {
             if (strstr(cmd_buf, "Start_canning") != NULL) {
                 ESP_LOGI(TAG, "开始装配！");
                 /*
-                 * 解析参数：Start_canning,数量,速度,档位
+                 * 解析参数：Start_canning,数量,体积,档位,蠕动泵的速度
                  * */
-                int num = 0, volume = 0;
+                int num = 0, volume = 0, rpm = 0;
                 float gear = 0.0f;
 
                 char *token;
@@ -121,20 +121,20 @@ static void command_execute_task(void *pvParameters) {
                     errno = 0;
                     long val = strtol(token, &endptr, 10);
                     if (errno == 0 && *endptr == '\0' && val >= 0 && val <= INT_MAX) {
-                        num = (int)val;
+                        num = (int) val;
                     } else {
                         ESP_LOGW(TAG, "数量参数非法: %s", token);
                     }
                 }
 
-                // 解析速度
+                // 解析体积
                 token = strtok_r(NULL, ",", &saveptr);
                 if (token) {
                     char *endptr;
                     errno = 0;
                     long val = strtol(token, &endptr, 10);
                     if (errno == 0 && *endptr == '\0' && val >= 0 && val <= INT_MAX) {
-                        volume = (int)val;
+                        volume = (int) val;
                     } else {
                         ESP_LOGW(TAG, "体积参数非法: %s", token);
                     }
@@ -153,9 +153,22 @@ static void command_execute_task(void *pvParameters) {
                     }
                 }
 
-                ESP_LOGI(TAG, "解析结果: 数量=%d, 体积=%d, 档位=%.1f", num, volume, gear);
+                // 解析蠕动泵速度
+                token = strtok_r(NULL, ",", &saveptr);
+                if (token) {
+                    char *endptr;
+                    errno = 0;
+                    long val = strtol(token, &endptr, 10);
+                    if (errno == 0 && *endptr == '\0' && val >= 0 && val <= INT_MAX) {
+                        rpm = (int) val;
+                    } else {
+                        ESP_LOGW(TAG, "蠕动泵速度参数非法: %s", token);
+                    }
+                }
 
-                Instrument_starts_canning(num, volume, gear);            //  开始装配
+                ESP_LOGI(TAG, "解析结果: 数量=%d, 体积=%d, 档位=%.1f, 蠕动泵速度=%d", num, volume, gear, rpm);
+
+                Instrument_starts_canning(num, volume, gear, rpm);            //  开始装配
 
             }
             /***************   液路排空    ******************/

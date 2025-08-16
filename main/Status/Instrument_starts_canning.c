@@ -4,21 +4,70 @@
 
 #include "Instrument_starts_canning.h"
 
-
-// 全局变量计数，或者用信号量
-int task_done_count = 0;
-
 static const char *TAG_SYSTEM = "SYSTEM--Notice";
 
-// 任务1：控制蠕动泵
+int volatile task_done_count = 0;                   //蠕动泵和旋转并行任务检测
+
+typedef struct {   //蠕动泵的结构体定义
+    int rpm;       // 转速
+    int volume;  // 目标体积 (mL)
+} PumpParam_t;
+
+// 25# 管号专用流量表 (mL/min)
+float get_flow_rate_25(int rpm) {
+    switch (rpm) {
+        case 30:  return 27;
+        case 60:  return 55;
+        case 100: return 92;
+        case 200: return 184;
+        case 400: return 370;
+        case 600: return 550;
+        default:  return 0; // 不支持的转速
+    }
+}
+
 void PeristalticPumpTask(void *pvParameters) {
+    PumpParam_t *param = (PumpParam_t *)pvParameters;
+    if (!param) {   // 防止 NULL 崩溃
+        ESP_LOGE(TAG_SYSTEM, "PumpTask 参数为空");
+        vTaskDelete(NULL);
+        return;
+    }
+
+    // ✅ 可以安全使用
+    ESP_LOGI("PumpTask", "收到参数: volume=%d, rpm=%d", param->volume, param->rpm);
+
+    // 查表获取流量
+    float flow_mL_min = get_flow_rate_25(param->rpm);
+    if (flow_mL_min <= 0) {
+        ESP_LOGE(TAG_SYSTEM, "不支持的转速: %d rpm", param->rpm);
+        vPortFree(param);
+        vTaskDelete(NULL);
+        return;
+    }
+
+    // 转换成 mL/s
+    float flow_mL_s = flow_mL_min / 60.0f;
+
+    // 计算运行时间
+    float time_s = param->volume / flow_mL_s;
+
+    ESP_LOGI(TAG_SYSTEM,
+             "目标体积=%.2d mL, 转速=%d rpm, 25#管, 流量=%.2f mL/min, 运行时间=%.2f s",
+             param->volume, param->rpm, flow_mL_min, time_s);
+
+    // 控制泵
     Peristaltic_pump_Control(1);
-    Peristaltic_pump_set_speed(100);
-    vTaskDelay(pdMS_TO_TICKS(4000));
+    Peristaltic_pump_set_speed(param->rpm);
+    vTaskDelay(pdMS_TO_TICKS((int)(time_s * 1000)));
     Peristaltic_pump_Control(0);
-    ESP_LOGI(TAG_SYSTEM, "蠕动泵输出营养液 完毕");
+
     task_done_count++;
-    vTaskDelete(NULL);  // 任务结束自杀
+
+    ESP_LOGI(TAG_SYSTEM, "蠕动泵输出营养液 完毕");
+
+    vPortFree(param);
+    vTaskDelete(NULL);
 }
 
 // 任务2：控制小旋转电机      两圈
@@ -102,7 +151,7 @@ int check_and_pick_plate(float gear) {
 /*
  * 成功后的操作
  * */
-void Success(float gear) {
+void Success(float gear,int volume,int rpm) {
     /************************   升降电机--上限位置    ***************************/
     UpDown_stepper_rotate(600.0f, 50.0f * gear, 1, 1);      //上移动检测上传感器
     check_pause();
@@ -116,12 +165,19 @@ void Success(float gear) {
     check_pause();
 
     /****************   左右电机--左位置    *******************/
-    LeftRight_Move_To_Position(sensor_Left_get_state, -600 * gear, "最左位置");
+    LeftRight_Move_To_Position(sensor_Left_get_state, -400 * gear, "最左位置");
     check_pause();
 
     /****************   蠕动泵输出营养液  电机旋转  *******************/
-    task_done_count = 0;
-    xTaskCreate(PeristalticPumpTask, "PumpTask", 4096, NULL, 5, NULL);
+    PumpParam_t *param = pvPortMalloc(sizeof(PumpParam_t));
+    if (!param) {
+        ESP_LOGE(TAG_SYSTEM, "内存分配失败");
+        return;
+    }
+    param->volume = volume;
+    param->rpm = rpm;
+
+    xTaskCreate(PeristalticPumpTask, "PumpTask", 4096, param, 5, NULL);
     xTaskCreate(LittleRotateMotorTask, "MotorTask", 4096, NULL, 5, NULL);
 
     // 等待两个任务完成
@@ -212,7 +268,7 @@ void Failure(float gear) {
 /*
  * 数量,体积,挡位
  * */
-void Instrument_starts_canning(int num, int volume, float gear) {
+void Instrument_starts_canning(int num, int volume, float gear, int rpm) {
     int produced_count = 0;   // 已经制作的数量
 
     for (int column = 0; column < 4; column++) {  // 4个柱子
@@ -223,18 +279,11 @@ void Instrument_starts_canning(int num, int volume, float gear) {
         for (int attempt = 0; attempt < 2; attempt++) { // 每根柱子检测2次
             int result = check_and_pick_plate(gear);
             if (result == 1) { // 成功
-                Success(gear);
+                Success(gear,volume,rpm);
                 failCount_single_column = 0; // 成功就清零
                 produced_count++;   // 成功制作一个培养皿
                 ESP_LOGI(TAG_SYSTEM, "第 %d 根柱子第 %d 次检测成功", column + 1, attempt + 1);
                 ESP_LOGI(TAG_SYSTEM, "累计完成数量: %d / %d", produced_count, num);
-
-                //发送剩余数量到串口屏
-                int remaining_count = num - produced_count;
-                char cmd[32];
-                snprintf(cmd, sizeof(cmd), "n0.val=%d", remaining_count);
-                software_uart_tx_str(uart, cmd);
-                ESP_LOGI(TAG_SYSTEM, "发送更新命令到串口屏: %s", cmd);
 
                 if (produced_count >= num) {
                     ESP_LOGI(TAG_SYSTEM, "已完成目标数量 %d，停止装配", num);
