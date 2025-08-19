@@ -26,7 +26,7 @@
 #define Big_ROTATE_STEPPER_PWM_DUTY        512                  // PWM 占空比（≈50%，1023 最大值）
 
 // ==================== 电机参数 ====================
-#define Big_ROTATE_STEPS_PER_REV              10000                  // 电机转一圈需要的步数（含细分）
+#define Big_ROTATE_STEPS_PER_REV              5000                  // 电机转一圈需要的步数（含细分）
 
 void Big_ROTATE_stepper_init(void);
 void Big_ROTATE_stepper_rotate(float angle_deg, float rpm, int dir, bool check_sensor);

@@ -44,11 +44,12 @@ void Little_stepper_rotate(float angle_deg, float rpm, int dir) {
     // 计算需要的步数
     float steps_needed = (angle_deg / 360.0f) * Little_STEPS_PER_REV;
 
-    // 计算 PWM 频率
-    float pwm_freq = (rpm / 60.0f) * Little_STEPS_PER_REV;
+    float pwm_freq;
+    float run_time_sec;
 
-    // 运行时间（秒）
-    float run_time_sec = steps_needed / pwm_freq * 4;
+    // 用rpm来算
+    pwm_freq = (rpm / 60.0f) * Little_STEPS_PER_REV;
+    run_time_sec = steps_needed / pwm_freq * 2;             // 运行时间（ms）
 
     ESP_LOGI(TAG, "Angle=%.1f deg, RPM=%.1f, Freq=%.2f Hz, Time=%.3f s",
              angle_deg, rpm, pwm_freq, run_time_sec);

@@ -44,6 +44,10 @@ void Big_ROTATE_stepper_rotate(float angle_deg, float rpm, int dir, bool check_s
     // 计算需要的步数
     float steps_needed = (angle_deg / 360.0f) * Big_ROTATE_STEPS_PER_REV;
 
+    if(rpm > 250)
+    {
+        rpm = 240;
+    }
     // 计算 PWM 频率
     float pwm_freq = (rpm / 60.0f) * Big_ROTATE_STEPS_PER_REV;
 

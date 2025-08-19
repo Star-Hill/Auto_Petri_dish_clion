@@ -34,7 +34,7 @@ void PeristalticPumpTask(void *pvParameters) {
         return;
     }
 
-    // ✅ 可以安全使用
+    //可以安全使用
     ESP_LOGI("PumpTask", "收到参数: volume=%d, rpm=%d", param->volume, param->rpm);
 
     // 查表获取流量
@@ -51,6 +51,7 @@ void PeristalticPumpTask(void *pvParameters) {
 
     // 计算运行时间
     float time_s = param->volume / flow_mL_s;
+
 
     ESP_LOGI(TAG_SYSTEM,
              "目标体积=%.2d mL, 转速=%d rpm, 25#管, 流量=%.2f mL/min, 运行时间=%.2f s",
@@ -72,7 +73,7 @@ void PeristalticPumpTask(void *pvParameters) {
 
 // 任务2：控制小旋转电机      两圈
 void LittleRotateMotorTask(void *pvParameters) {
-    Little_stepper_rotate(360.0f, 60.0f, 1);
+    Little_stepper_rotate(720.0f, 40.0f, 1);
     task_done_count++;
     ESP_LOGI(TAG_SYSTEM, "旋转培养皿 完毕");
     vTaskDelete(NULL);
@@ -161,8 +162,8 @@ void Success(float gear,int volume,int rpm) {
     check_pause();
 
     /************************   升降电机--中限位置    ***************************/
-    UpDown_stepper_rotate(400.0f, 50.0f * gear, 0, 0);      //上下电机开盖位置
-    check_pause();
+    UpDown_stepper_rotate(500.0f, 50.0f * gear, 0, 0);      //上下电机开盖位置
+    check_pause();      //400是刚好
 
     /****************   左右电机--左位置    *******************/
     LeftRight_Move_To_Position(sensor_Left_get_state, -400 * gear, "最左位置");
@@ -185,9 +186,10 @@ void Success(float gear,int volume,int rpm) {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     check_pause();
+    task_done_count = 0;
 
     /****************   小旋转电机--左-->中位置   逆时针   *******************/
-    Little_stepper_rotate(360.0f, 60.0f, 0);
+    Little_stepper_rotate(1080.0f, 120.0f, 0);              //三圈
     check_pause();
     ESP_LOGI(TAG_SYSTEM, "旋转培养皿开始逆时针旋转");
 
