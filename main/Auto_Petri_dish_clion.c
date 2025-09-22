@@ -18,16 +18,15 @@ void app_main(void) {
     */
     All_init();
 
-    SERVO_MOTOR_Move_Position_Speed((int)(1500), -15000, 0, NULL);
-//    //上电自动校准
-//    Machine_initialization();
-//    ESP_LOGW("系统日志", "上电自动校准完成，开始命令队列初始");
-//
-//    /**
-//    * @CreateTime 2025/9/8
-//    * @Author Star-Hill
-//    * @Author Star-Hill
-//    * @brief command_handler_init()创建任务队列表
-//    */
-//    command_handler_init();
+    //上电自动校准
+    Machine_initialization();
+    ESP_LOGI("系统日志", "上电自动校准完成，开始命令队列初始");
+
+    /**
+    * @CreateTime 2025/9/8
+    * @Author Star-Hill
+    * @Author Star-Hill
+    * @brief command_handler_init()创建任务队列表
+    */
+    command_handler_init();
 }

@@ -13,13 +13,13 @@
 #include <math.h>
 
 // ==================== 步进电机的GPIO引脚设置 ====================
-#define Big_ROTATE_STEPPER_STEP_GPIO   21   // STEP 脉冲引脚
-#define Big_ROTATE_STEPPER_DIR_GPIO    47   // 方向控制引脚
-#define Big_ROTATE_STEPPER_EN_GPIO     48   // 使能控制引脚（低电平有效）
+#define Big_ROTATE_STEPPER_STEP_GPIO    40          // STEP 脉冲引脚              21
+#define Big_ROTATE_STEPPER_DIR_GPIO     39          // 方向控制引脚                47
+#define Big_ROTATE_STEPPER_EN_GPIO      38          // 使能控制引脚（低电平有效）    48
 
 // ==================== 电机参数 ====================
-#define Big_ROTATE_STEPS_PER_REV       1600     // 电机转一圈需要的步数（含细分）
-#define BIG_ROTATE_GEAR_RATIO          50        // 传动比
+#define Big_ROTATE_STEPS_PER_REV       3200         // 电机转一圈需要的步数（含细分）1600
+#define BIG_ROTATE_GEAR_RATIO          50           // 传动比
 
 // ==================== RMT 配置 ====================
 #define Big_ROTATE_STEPPER_RESOLUTION_HZ   1000000  // 1 MHz 分辨率（1 tick = 1us）
