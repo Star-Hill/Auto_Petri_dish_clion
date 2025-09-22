@@ -6,7 +6,7 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 
-#define TAG_Pump "Pump_TEST"
+#define TAG_Pump "Pump"
 
 void Pump_driver_init(void) {
     gpio_config_t io_conf = {
@@ -21,6 +21,7 @@ void Pump_driver_init(void) {
     // 默认关闭气泵
     gpio_set_level(Pump_Down_GPIO, 0);
     gpio_set_level(Pump_Up_GPIO, 0);
+    ESP_LOGI(TAG_Pump, "气泵初始化完成");
 }
 
 // 控制电磁阀1

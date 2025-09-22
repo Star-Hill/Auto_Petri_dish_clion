@@ -60,7 +60,7 @@ void HMI_control_driver_test(void) {
             }
             filtered[j] = '\0';
 
-            ESP_LOGI(TAG, "收到数据：%s", filtered);
+            ESP_LOGI(TAG, "收到数据: %s", filtered);
 
             if (strstr((char*)data, "UpDown_motor_auto_loop")) {
 /*                UpDown_motor_auto_loop();*/

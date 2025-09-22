@@ -12,12 +12,12 @@
 /***************    单元驱动    ***************/
 #include "sensor.h"                 //传感器
 #include "UpDown.h"                 //上下步进电机
-#include "LeftRight.h"              //左右伺服电机
 #include "Big_Rotate.h"             //培养皿架旋转
 #include "Little_Rotate.h"          //培养皿旋转
 #include "Pump_driver.h"            //气泵
 #include "Valve_driver.h"           //电磁阀
 #include "Peristaltic_pump.h"       //蠕动泵
+#include "Servo_motor_RS485_Speed_Location.h"  //左右伺服电机
 
 #include "HMI.h"                    //串口屏
 #include "HMI_control_driver.h"     //软串口底层
@@ -31,6 +31,8 @@ void Instrument_starts_canning(int num, int volume, float gear, int rpm);
 
 int check_and_pick_plate(float gear);
 
+//调用    Peristaltic_Steeping  两个任务同步函数
+void Peristaltic_Steeping(int volume, int rpm);
 
 void All_init(void);
 

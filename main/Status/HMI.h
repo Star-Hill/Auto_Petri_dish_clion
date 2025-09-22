@@ -19,7 +19,6 @@
 /*
  * 本地库
  * */
-#include "softserial.h"
 #include "Machine_initialization.h"
 
 // 外部可见的暂停变量

@@ -5,14 +5,14 @@
 #ifndef AUTO_PETRI_DISH_CLION_SENSOR_H
 #define AUTO_PETRI_DISH_CLION_SENSOR_H
 
-#define SENSOR_Calibration_GPIO    8
-#define SENSOR_Entrance_GPIO    18
+#define SENSOR_Calibration_GPIO    7
+#define SENSOR_Entrance_GPIO    15
 
-#define SENSOR_Up_GPIO      19
-#define SENSOR_Down_GPIO    20
-#define SENSOR_LEFT_GPIO    15
-#define SENSOR_MIDDLE_GPIO    16
-#define SENSOR_RIGHT_GPIO    17
+#define SENSOR_Up_GPIO      16
+#define SENSOR_Down_GPIO    17
+#define SENSOR_LEFT_GPIO    18
+#define SENSOR_MIDDLE_GPIO    8
+#define SENSOR_RIGHT_GPIO    19
 
 // 初始化传感器 GPIO
 void sensor_ALL_init(void);

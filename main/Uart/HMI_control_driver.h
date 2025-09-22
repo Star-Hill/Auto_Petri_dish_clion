@@ -10,8 +10,8 @@
 
 
 #define UART_HMI UART_NUM_2
-#define UART_TX_PIN 5       // ESP32 --> 串口屏 RX
-#define UART_RX_PIN 6       // 串口屏 TX --> ESP32
+#define UART_TX_PIN 6               // ESP32 --> 串口屏 RX
+#define UART_RX_PIN 5               // 串口屏 TX --> ESP32
 
 #define UART_BUF_SIZE 1024
 

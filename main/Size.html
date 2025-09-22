@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>ESP32 内存使用情况 - 动态饼图（含未使用）</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+
+        textarea {
+            width: 90%;
+            height: 150px;
+            margin-bottom: 10px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 8px 16px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            gap: 20px;
+        }
+
+        .chart-box {
+            flex: 1 1 300px;
+            max-width: 350px;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: auto !important;
+        }
+    </style>
+</head>
+<body>
+<h2>ESP32 内存使用情况 - 动态饼图（含未使用）</h2>
+
+<textarea id="jsonInput" placeholder="在这里粘贴 JSON 数据"></textarea><br>
+<button id="drawButton">生成饼图</button>
+
+<div class="chart-container" id="chartContainer"></div>
+
+<script>
+    const categories = {
+        "DRAM": ["dram_data", "dram_bss", "dram_rodata", "dram_other"],
+        "IRAM": ["iram_vectors", "iram_text", "iram_other"],
+        "DIRAM": ["diram_data", "diram_bss", "diram_text", "diram_vectors", "diram_rodata", "diram_other"],
+        "Flash": ["flash_code", "flash_rodata", "flash_other"]
+    };
+
+    const totalFields = {
+        "DRAM": "dram_total",
+        "IRAM": "iram_total",
+        "DIRAM": "diram_total",
+        "Flash": "total_size"
+    };
+
+    let chartInstances = [];
+
+    function clearCharts() {
+        chartInstances.forEach(chart => chart.destroy());
+        chartInstances = [];
+        document.getElementById('chartContainer').innerHTML = '';
+    }
+
+    function createCategoryChart(category, fields, data, totalField) {
+        const labels = [];
+        const values = [];
+
+        // 收集各子项使用量
+        fields.forEach(field => {
+            if (data[field] !== undefined) {
+                values.push(data[field]);
+            }
+        });
+
+        // 总量
+        const total = data[totalField] !== undefined ? data[totalField] : values.reduce((a,b)=>a+b,0);
+
+        if (total === 0) return;
+
+        // 添加每个子项标签
+        fields.forEach((field, idx) => {
+            if (data[field] !== undefined) {
+                const percent = ((values[idx]/total)*100).toFixed(2);
+                labels.push(`${field}: ${data[field]}B (${percent}%)`);
+            }
+        });
+
+        // 计算未使用量
+        const usedSum = values.reduce((a,b)=>a+b,0);
+        const remain = total - usedSum;
+        if (remain > 0) {
+            labels.push(`未使用: ${remain}B (${((remain/total)*100).toFixed(2)}%)`);
+            values.push(remain);
+        }
+
+        const container = document.getElementById('chartContainer');
+        const box = document.createElement('div');
+        box.className = 'chart-box';
+
+        const h3 = document.createElement('h3');
+        h3.textContent = category;
+        box.appendChild(h3);
+
+        const canvas = document.createElement('canvas');
+        canvas.id = `${category}Chart`;
+        box.appendChild(canvas);
+        container.appendChild(box);
+
+        const chart = new Chart(canvas.getContext('2d'), {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: values.map(() => `hsl(${Math.random()*360},70%,60%)`)
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: `${category} 内存分布 (总: ${total}B)`
+                    }
+                }
+            }
+        });
+
+        chartInstances.push(chart);
+    }
+
+    document.getElementById('drawButton').addEventListener('click', () => {
+        let memoryData;
+        try {
+            memoryData = JSON.parse(document.getElementById('jsonInput').value);
+        } catch (e) {
+            alert("JSON 格式错误，请检查输入！");
+            return;
+        }
+
+        clearCharts();
+
+        Object.keys(categories).forEach(cat => {
+            createCategoryChart(cat, categories[cat], memoryData, totalFields[cat]);
+        });
+    });
+</script>
+</body>
+</html>

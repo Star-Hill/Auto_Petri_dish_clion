@@ -22,6 +22,7 @@ void sensor_ALL_init(void) {
             .intr_type = GPIO_INTR_DISABLE
     };
     gpio_config(&io_conf);
+    ESP_LOGI(TAG, "所有传感器初始化完成");
 }
 
 // 获取各个传感器状态（1 表示无遮挡，0 表示有遮挡）

@@ -12,7 +12,7 @@
 #define TAG_PV "Pump_Valve"
 
 /*  通用运行函数
- * 1,1开上     1，0关上      0,1开上    0,0关上
+ * 1,1开上     1，0关上      0,1开下    0,0关下
  * */
 void Pump_Valve_run_combo(bool up_down, bool on_off) {
     if (up_down == 1) { // 上

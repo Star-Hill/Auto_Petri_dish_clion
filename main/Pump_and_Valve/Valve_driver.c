@@ -6,7 +6,7 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 
-#define TAG "Valve_TEST"
+#define TAG "Valve"
 
 // 初始化电磁阀相关 GPIO
 void valve_driver_init(void) {
@@ -22,6 +22,7 @@ void valve_driver_init(void) {
     // 初始状态：关闭
     gpio_set_level(Valve_Down_GPIO, 0);
     gpio_set_level(Valve_Up_GPIO, 0);
+    ESP_LOGI(TAG, "电磁阀初始化完成");
 }
 
 // 控制电磁阀1

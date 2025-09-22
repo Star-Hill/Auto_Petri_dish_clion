@@ -2,6 +2,7 @@
   <dictionary name="project">
     <words>
       <w>baudrate</w>
+      <w>gptimer</w>
       <w>hpoint</w>
       <w>intr</w>
       <w>ledc</w>

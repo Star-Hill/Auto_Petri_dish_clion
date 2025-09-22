@@ -9,33 +9,15 @@
 #include "esp_log.h"
 
 /**
- * @brief RS485 引脚定义    使用UART端口号
- */
-#define Peristaltic_pump_UART_NUM 2
-#define Peristaltic_pump_485_TX   2
-#define Peristaltic_pump_485_RX   1
-
-/**
- * @brief 蠕动泵 RS485 波特率
- */
-#define Peristaltic_pump_RS485_BAUDRATE           9600       //波特率
-
-/**
  * @brief 蠕动泵从站 Modbus 地址
  */
-#define Peristaltic_pump_SLAVE_ADDR  0x01
+#define Peristaltic_pump_SLAVE_ADDR  0x02
 
 // 功能码
-#define Peristaltic_pump_MODBUS_READ_SINGLE_REGISTER 0x03           //功能码：读寄存器
-#define Peristaltic_pump_MODBUS_WRITE_SINGLE_REGISTER 0x06          //功能码：写单寄存器
+#define Peristaltic_pump_MODBUS_READ_SINGLE_REGISTER  0x03
+#define Peristaltic_pump_MODBUS_WRITE_SINGLE_REGISTER 0x06
 
 /* ===================== API 函数声明 ===================== */
-
-/**
- * @brief 初始化蠕动泵 RS485 通信接口
- * @note 必须在调用其他函数之前调用
- */
-void Peristaltic_pump_init(void);
 
 /**
  * @brief 设置蠕动泵转速
@@ -51,25 +33,18 @@ void Peristaltic_pump_set_speed(int32_t rpm);
 void Peristaltic_pump_set_Reverse_Mode(uint16_t Mode);
 
 /**
- * @brief 启动停止蠕动泵
- * @note 对应寄存器地址为十进制 3102，写入 0x01 使能    写入 0x00 使能
+ * @brief 启动/停止蠕动泵
+ * @note 对应寄存器地址为十进制 3102，写入 0x01 启动，写入 0x00 停止
  */
 void Peristaltic_pump_Control(bool enable);
 
 /**
  * @brief 是否全速清洗蠕动泵
- * @note 对应寄存器地址为十进制 3103，写入 0x01 全速    写入 0x00 正常速度
+ * @note 对应寄存器地址为十进制 3103，写入 0x01 全速，写入 0x00 正常速度
  */
 void Peristaltic_pump_Cleaning(bool enable);
 
-/**
- * @brief 测试蠕动泵循环启停
- * @note 启动、运行 2 秒、停止，循环执行
- */
-void Peristaltic_pump_Test(void);
-
 // 运行蠕动泵一段时间
-void Peristaltic_pump_Run(uint32_t speed, uint32_t run_time_s);
-
+void Peristaltic_pump_Run(int32_t speed, float run_time_s);
 
 #endif //AUTO_PETRI_DISH_CLION_PERISTALTIC_PUMP_H
