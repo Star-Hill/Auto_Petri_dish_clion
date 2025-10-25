@@ -43,20 +43,26 @@ static void uart_receive_task(void *pvParameters) {
                 xQueueSend(command_queue, recv_str, portMAX_DELAY);
             }
 
+            /***************   复位    ******************/
+            if (strstr(recv_str, "Software_reset") != NULL) {
+                Peristaltic_pump_Control(false);
+                vTaskDelay(pdMS_TO_TICKS(100));
+                SERVO_MOTOR_Stop();
+                vTaskDelay(pdMS_TO_TICKS(100));
+                esp_restart();  // 立即复位芯片
+                ESP_LOGI(TAG, "机器强行复位");
+            }
             if (strstr(recv_str, "stop") != NULL) {
                 g_pause_flag = true;
+                uart_hmi_send("page stop");
                 ESP_LOGI(TAG, "立即暂停！");
                 continue;   // 不进队列
             }
             if (strstr(recv_str, "go_on") != NULL) {
                 g_pause_flag = false;
+                uart_hmi_send("page go_on");
                 ESP_LOGI(TAG, "立即继续！");
                 continue;   // 不进队列
-            }
-            /***************   复位    ******************/
-            if (strstr(recv_str, "Software_reset") != NULL) {
-                esp_restart();  // 立即复位芯片
-                ESP_LOGI(TAG, "机器强行复位");
             }
         }
         vTaskDelay(pdMS_TO_TICKS(50));
@@ -74,6 +80,8 @@ static void command_execute_task(void *pvParameters) {
             /***************   回零    ******************/
             if (strstr(cmd_buf, "Return_to_zero") != NULL) {
                 Machine_initialization();
+                // 两个任务完成后，再切换页面
+                uart_hmi_send("page dialog5");
                 ESP_LOGI(TAG, "初始化成功，可以开始装配了！");
             }
             /***************   开始装配    ******************/
@@ -110,7 +118,7 @@ static void command_execute_task(void *pvParameters) {
                 uart_set_baudrate(SERVO_MOTOR_UART_NUM, 9600);
                 Peristaltic_pump_Run(200, 10);
                 uart_set_baudrate(SERVO_MOTOR_UART_NUM, 57600);
-                uart_hmi_send("page 13");
+                uart_hmi_send("page dialog6");
                 ESP_LOGI(TAG, "液路排空完毕！");
             }
             /***************   管路清洗    ******************/
@@ -118,7 +126,7 @@ static void command_execute_task(void *pvParameters) {
                 uart_set_baudrate(SERVO_MOTOR_UART_NUM, 9600);
                 Peristaltic_pump_Cleaning(1);
                 uart_set_baudrate(SERVO_MOTOR_UART_NUM, 57600);
-                uart_hmi_send("page 14");
+                uart_hmi_send("page dialog7");
                 ESP_LOGI(TAG, "管路清洗完毕！");
             }
         }

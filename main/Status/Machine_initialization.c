@@ -2,92 +2,83 @@
 // Created by DELL on 2025/8/11.
 //
 #include "Machine_initialization.h"
-#include "HMI_control_driver.h"
-#include "freertos/event_groups.h"
+#define INIT_EVENT_LEFT_RIGHT_DONE   (1 << 0)
+#define INIT_EVENT_COLUMN_DONE       (1 << 1)
 
-// ================= 同步事件组 =================
-static EventGroupHandle_t motor_event_group;
-#define MOTOR1_DONE BIT0
-#define MOTOR2_DONE BIT1
+static EventGroupHandle_t init_event_group = NULL;
+
 
 /**
-* @CreateTime 2025/9/12
-* @Author Star-Hill
-* @brief 柱体电机回零
-*/
-void task_column_motor(void *pvParameters) {
-    Big_ROTATE_stepper_rotate(360.0f, 2.0f, 1, true, 500);
-    //before      I (469) Big_Stepping: angle=360.0 deg, rpm=2.0, steps=160000, freq=5333 Hz
+ * @CreateTime 2025/9/12
+ * @Author Star-Hill
+ * @brief 伺服电机右位置
+ */
+void left_right_motor() {
+    SERVO_MOTOR_POS_Reg((int)(1500), -20000, 0, NULL);
+    SERVO_MOTOR_POS_Reg((int)(200), 600000, 0, true);
+    SERVO_MOTOR_Clear_Position(); // 位置强制清零
+    SERVO_MOTOR_POS_Reg((int)(200), -13000, 0, NULL); // 回一点校准
+}
+/**
+ * @CreateTime 2025/9/12
+ * @Author Star-Hill
+ * @brief 伺服电机右位置
+ */
+void column_motor() {
+    Big_ROTATE_stepper_rotate_US(360.0f, 4.0f, 1, true);
+}
 
-    // 通知完成
-    xEventGroupSetBits(motor_event_group, MOTOR1_DONE);
+/**
+ * @brief 柱体电机回零任务
+ */
+static void column_motor_task(void* arg) {
+    ESP_LOGI("INIT", "柱体电机开始回零...");
+    column_motor(); // 阻塞执行
+    ESP_LOGI("INIT", "柱体电机回零完成。");
 
+    // 设置事件标志位
+    xEventGroupSetBits(init_event_group, INIT_EVENT_COLUMN_DONE);
     vTaskDelete(NULL);
 }
 
 /**
-* @CreateTime 2025/9/12
-* @Author Star-Hill
-* @brief 伺服电机右位置
-*/
-void task_left_right_motor(void *pvParameters) {
-    SERVO_MOTOR_Move_Position_Speed((int)(1500), -15000, 0, NULL);
-    SERVO_MOTOR_Move_To_Position(sensor_Right_get_state, 200, "右位置");
+ * @brief 左右伺服电机任务
+ */
+static void left_right_motor_task(void* arg) {
+    ESP_LOGI("INIT", "左右伺服电机开始回零...");
+    left_right_motor(); // 阻塞执行
+    ESP_LOGI("INIT", "左右伺服电机回零完成。");
 
-    // 位置强制清零
-    SERVO_MOTOR_Clear_Position();
-
-    // 回一点校准
-    SERVO_MOTOR_Move_Position_Speed((int)(100), -5850, 0, NULL);
-
-    // 通知完成
-    xEventGroupSetBits(motor_event_group, MOTOR2_DONE);
-
+    // 设置事件标志位
+    xEventGroupSetBits(init_event_group, INIT_EVENT_LEFT_RIGHT_DONE);
     vTaskDelete(NULL);
 }
 
 /**
-* @CreateTime 2025/9/12
-* @Author Star-Hill
-* @brief 伺服电机右位置 && 柱体电机回零 同时进行，并等待两者完成
-*/
-void start_both_motors(void *pvParameters) {
-    // 清空事件组标志位
-    xEventGroupClearBits(motor_event_group, MOTOR1_DONE | MOTOR2_DONE);
-
-    // 创建两个并行任务
-    xTaskCreate(task_column_motor, "task_column_motor", 4096, NULL, 5, NULL);
-    xTaskCreate(task_left_right_motor, "task_left_right_motor", 4096, NULL, 5, NULL);
-
-    // 等待两个任务都完成
-    xEventGroupWaitBits(
-            motor_event_group,
-            MOTOR1_DONE | MOTOR2_DONE,
-            pdTRUE,   // 退出时清除标志位
-            pdTRUE,   // 必须两个任务都完成
-            portMAX_DELAY
-    );
-
-    // 两个任务完成后，再切换页面
-    uart_hmi_send("page 12");
-
-    vTaskDelete(NULL); // 自删
-}
-
-/**
-* @CreateTime 2025/9/12
-* @Author Star-Hill
-* @brief 设备初始化流程
-*/
+ * @brief 设备初始化流程（顺序+并发逻辑）
+ */
 void Machine_initialization(void) {
-    // 升降电机到下位置
-    UpDown_stepper_rotate(3600.0f, 20.0f, 0, 2);
+    ESP_LOGI("INIT", "=== 开始设备回零 ===");
 
-    // 创建事件组
-    if (motor_event_group == NULL) {
-        motor_event_group = xEventGroupCreate();
+    if (init_event_group == NULL) {
+        init_event_group = xEventGroupCreate();
     }
 
-    // 启动并行电机任务
-    xTaskCreate(start_both_motors, "start_both_motors", 4096, NULL, 5, NULL);
+    // Step 1: 升降电机到下位置（阻塞）
+    ESP_LOGI("INIT", "升降电机下移开始...");
+    UpDown_stepper_rotate(3600.0f, 20.0f, 0, 2);
+    ESP_LOGI("INIT", "升降电机下移完成。");
+
+    // Step 2: 并发执行两个回零任务
+    xTaskCreate(column_motor_task, "column_motor_task", 4096, NULL, 5, NULL);
+    xTaskCreate(left_right_motor_task, "left_right_motor_task", 4096, NULL, 5, NULL);
+
+    // Step 3: 等待两个任务都完成
+    ESP_LOGI("INIT", "等待两个电机回零完成...");
+    xEventGroupWaitBits(init_event_group,
+                        INIT_EVENT_LEFT_RIGHT_DONE | INIT_EVENT_COLUMN_DONE,
+                        pdTRUE, // 清除标志位
+                        pdTRUE, // 等待两个事件都到达
+                        portMAX_DELAY);
+    ESP_LOGI("INIT", "两个电机回零已完成！");
 }

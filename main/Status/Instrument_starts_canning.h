@@ -6,6 +6,7 @@
 #define AUTO_PETRI_DISH_CLION_INSTRUMENT_STARTS_CANNING_H
 
 #include "esp_log.h"
+#include "math.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 

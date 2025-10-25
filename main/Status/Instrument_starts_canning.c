@@ -13,8 +13,7 @@ static int plate_result = 0;  // 0=未检测到, 1=检测到
 // 电机任务
 void MotorTask(void *pvParameters) {
     float gear = *(float *) pvParameters;
-    SERVO_MOTOR_Move_Position_Speed((int) (1000 * gear), -310000, 0, sensor_Middle_get_state);
-    SERVO_MOTOR_Move_Position_Speed((int) (1000 * gear), -297300, 0, NULL);
+    SERVO_MOTOR_POS_Reg((int)(1000 * gear),-300000,0,false);
     vTaskDelete(NULL); // 任务完成后自删
 }
 
@@ -42,6 +41,7 @@ void PlateDetectTask(void *pvParameters) {
 
 /*****************************   蠕动泵 & 旋转  Start    *********************************/
 int volatile task_done_count = 0;                   //蠕动泵和旋转并行任务检测
+
 typedef struct {   //蠕动泵的结构体定义
     int rpm;       // 转速
     int volume;  // 目标体积 (mL)
@@ -108,7 +108,7 @@ void PeristalticPumpTask(void *pvParameters) {
 // 任务2：控制小旋转电机      两圈
 void LittleRotateMotorTask(void *pvParameters) {
     float angle = 360.0f * ceilf(PPSS / 3);   // 电机要转的角度
-    Little_stepper_rotate(angle, 20.0f, 1);
+    Little_stepper_rotate_US(angle, 20.0f, 1);
     task_done_count++;
     ESP_LOGI(TAG_SYSTEM, "旋转培养皿 完毕");
     vTaskDelete(NULL);
@@ -138,7 +138,7 @@ void Peristaltic_Steeping(int volume, int rpm) {
 /*****************   柱体电机旋转 45 度 Start *******************/
 void BigRotateMotorTask(void *pvParameters) {
     float gear = *(float *) pvParameters;
-    Big_ROTATE_stepper_rotate(45.0f, 2.0f * gear, 0, false, 500);
+    Big_ROTATE_stepper_rotate_US(45.0f, 3.0f * gear, 1, false);
     ESP_LOGI(TAG_SYSTEM, "柱体电机旋转 45 度 完毕  到达满柱体  当前挡位 %.2f", gear);
     vTaskDelete(NULL);  // 执行完毕自动删除
 }
@@ -159,11 +159,13 @@ void All_init(void) {
 
 // 函数返回值：1 表示成功取到培养皿，0 表示失败
 int check_and_pick_plate(float gear) {
-    UpDown_stepper_rotate(1220.0f, 50.0f * gear, 1, 0);
+    vTaskDelay(pdMS_TO_TICKS(200));
+
+    UpDown_stepper_rotate(1220.0f, 60.0f * gear, 1, 0);
     check_pause();
 
     Pump_Valve_run_combo(0, 1);
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(200));
     check_pause();
 
     plate_result = 0; // 清零结果
@@ -184,37 +186,41 @@ int check_and_pick_plate(float gear) {
  * 成功后的操作
  * */
 void Success(float gear, int volume, int rpm) {
+    vTaskDelay(pdMS_TO_TICKS(200));
     /************************   升降电机--上限位置    ***************************/
     UpDown_stepper_rotate(630.0f, 50.0f * gear, 1, 0);      //上盖位置
+    vTaskDelay(pdMS_TO_TICKS(100));
     check_pause();
 
     /***************   打开上磁阀和上气泵电机    ******************/
     Pump_Valve_run_combo(1, 1);
+    vTaskDelay(pdMS_TO_TICKS(100));
     check_pause();
 
     /************************   升降电机--吐液位置    ***************************/
     UpDown_stepper_rotate(650.0f, 50.0f * gear, 0, 0);      //开盖
+    vTaskDelay(pdMS_TO_TICKS(100));
+    check_pause();
+
+    /****************   左右电机--左位置    *******************/
+    SERVO_MOTOR_POS_Reg((int)(1000 * gear),-555000,0,false);
     check_pause();
 
     /****************   柱体电机--转45度  罐装完毕的柱体    *******************/
     xTaskCreate(BigRotateMotorTask, "BigRotateTask", 4096, &gear, 5, NULL);
     ESP_LOGI(TAG_SYSTEM, "移动到罐装完毕的柱体");
 
-    /****************   左右电机--左位置    *******************/
-    SERVO_MOTOR_Move_Position_Speed((int) (1000 * gear), -561000, 0, sensor_Left_get_state);
-    check_pause();
-
     /****************   蠕动泵输出营养液  电机旋转  *******************/
     Peristaltic_Steeping(volume, rpm);
-    uart_set_baudrate(SERVO_MOTOR_UART_NUM, 57600);
     check_pause();
 
     /****************   小旋转电机--左-->中位置   逆时针   *******************/
-    Little_stepper_rotate(720.0f, 30.0f, 0);              //两圈
+    Little_stepper_rotate_US(720.0f, 20.0f, 0);              //两圈
     check_pause();
 
     /****************   左右电机--中位置    *******************/
-    SERVO_MOTOR_Move_Position_Speed((int) (1000 * gear), -297300, 0, sensor_Middle_get_state);
+    uart_set_baudrate(SERVO_MOTOR_UART_NUM, 57600);
+    SERVO_MOTOR_POS_Reg((int)(1000 * gear),-300000,0,false);
     check_pause();
 
     /************************   升降电机--上限位置    ***************************/
@@ -231,12 +237,11 @@ void Success(float gear, int volume, int rpm) {
     check_pause();
 
     /****************   左右电机--右位置    *******************/
-    SERVO_MOTOR_Move_Position_Speed((int) (1000 * gear), 0, 0, sensor_Right_get_state);
-    SERVO_MOTOR_Move_Position_Speed((int) (1000), -4500, 0, NULL);
+    SERVO_MOTOR_POS_Reg((int)(1000 * gear),-4500,0,false);
     check_pause();
 
     /************************   升降电机--上限位置    ***************************/
-    UpDown_stepper_rotate(1850.0f, 50.0f * gear, 1, 1);
+    UpDown_stepper_rotate(1850.0f, 50.0f , 1, 0);
     check_pause();
 
     /***************   关闭下磁阀和下气泵电机    ******************/
@@ -248,9 +253,8 @@ void Success(float gear, int volume, int rpm) {
     check_pause();
 
     /****************   柱体电机--转-45度  空盒子    *******************/
-    Big_ROTATE_stepper_rotate(45.0f, 2.0f * gear, 1, false, 500);
+    Big_ROTATE_stepper_rotate_US(45.0f, 3.0f * gear, 1, false);
     check_pause();
-
 }
 
 /*
@@ -259,8 +263,8 @@ void Success(float gear, int volume, int rpm) {
 static SemaphoreHandle_t failureSem = NULL;
 
 void BigRotateTask(void *pvParameters) {
-    float gear = *(float *) pvParameters;
-    Big_ROTATE_stepper_rotate(90.0f, 2.0f * gear, 1, false, 500);
+    const float gear = *(float *) pvParameters;
+    Big_ROTATE_stepper_rotate_US(90.0f, 3.0f * gear, 1, false);
 
     xSemaphoreGive(failureSem);
     vTaskDelete(NULL);
@@ -268,8 +272,7 @@ void BigRotateTask(void *pvParameters) {
 
 void LeftRightMotorTask(void *pvParameters) {
     float gear = *(float *) pvParameters;
-    SERVO_MOTOR_Move_Position_Speed((int)(1000 * gear), 0, 0, sensor_Right_get_state);
-    SERVO_MOTOR_Move_Position_Speed((int)(1000 * gear), -5850, 0, NULL);
+    SERVO_MOTOR_POS_Reg((int)(1000 * gear), -5850, 0, false);
 
     xSemaphoreGive(failureSem);
     vTaskDelete(NULL);
@@ -325,7 +328,7 @@ void Instrument_starts_canning(int num, int volume, float gear, int rpm) {
                 sprintf(buf, "finish.t3.txt=\"%d\"", produced_count);
                 uart_hmi_send(buf);
                 vTaskDelay(pdMS_TO_TICKS(100));
-                uart_hmi_send("page 15");
+                uart_hmi_send("page finish");
                 return; // 直接退出函数
             }
             // 成功后重新从第0根柱子开始

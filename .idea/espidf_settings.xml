@@ -3,7 +3,7 @@
   <component name="ESP-IDF_SETTINGS">
     <option name="cmakeProfile" value="idf" />
     <option name="monitorBaud" value="Auto" />
-    <option name="port" value="COM9" />
+    <option name="port" value="COM11" />
     <option name="uploadBaud" value="Auto" />
   </component>
 </project>

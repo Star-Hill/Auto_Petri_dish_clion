@@ -8,15 +8,16 @@
 #define TAG "SERVO_MOTOR_RS485"
 
 // ====== CRC16 校验函数 (Modbus RTU，多项式 0xA001，低字节先发)
-static uint16_t modbus_crc16(const uint8_t *buf, uint16_t len) {
+static uint16_t modbus_crc16(const uint8_t* buf, uint16_t len) {
     uint16_t crc = 0xFFFF;
     for (int pos = 0; pos < len; pos++) {
-        crc ^= (uint16_t) buf[pos];
+        crc ^= (uint16_t)buf[pos];
         for (int i = 0; i < 8; i++) {
             if (crc & 0x0001) {
                 crc >>= 1;
                 crc ^= 0xA001;
-            } else {
+            }
+            else {
                 crc >>= 1;
             }
         }
@@ -25,12 +26,12 @@ static uint16_t modbus_crc16(const uint8_t *buf, uint16_t len) {
 }
 
 /********** RS485发送数据 **************/
-static void SERVO_MOTOR_rs485_send_bytes(const uint8_t *data, uint8_t length) {
+static void SERVO_MOTOR_rs485_send_bytes(const uint8_t* data, uint8_t length) {
     uart_flush_input(SERVO_MOTOR_UART_NUM);
-    if (uart_write_bytes(SERVO_MOTOR_UART_NUM, (const char *) data, length) != length) {
+    if (uart_write_bytes(SERVO_MOTOR_UART_NUM, (const char*)data, length) != length) {
         ESP_LOGE(TAG, "Send data failed.");
     }
-    uart_wait_tx_done(SERVO_MOTOR_UART_NUM, pdMS_TO_TICKS(50));
+    uart_wait_tx_done(SERVO_MOTOR_UART_NUM, pdMS_TO_TICKS(100));
 }
 
 /********** 写单寄存器 **********/
@@ -47,20 +48,30 @@ void SERVO_MOTOR_modbus_write_single_register(uint16_t reg_addr, uint16_t value)
     frame[6] = crc & 0xFF;
     frame[7] = crc >> 8;
 
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOG_BUFFER_HEX("TX", frame, sizeof(frame));
+#endif
+
     SERVO_MOTOR_rs485_send_bytes(frame, sizeof(frame));
 
-    vTaskDelay(pdMS_TO_TICKS(20));
+    vTaskDelay(pdMS_TO_TICKS(100));
     uint8_t rx_buf[256];
     int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(100));
-    if (rx_len > 0) ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
-    else
+
+    if (rx_len > 0) {
+#ifdef SERVO_MOTOR_DEBUG
+        ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
+#endif
+    }
+    else {
         ESP_LOGW(TAG, "No response from device.");
-    vTaskDelay(pdMS_TO_TICKS(50));
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(100));
 }
 
 /********** 读单寄存器 **********/
-bool modbus_read_single_register(uint16_t reg_addr, uint16_t *value) {
+bool modbus_read_single_register(uint16_t reg_addr, uint16_t* value) {
     uint8_t frame[8];
     frame[0] = SERVO_MOTOR_SLAVE_ADDR;
     frame[1] = SERVO_MOTOR_MODBUS_READ_SINGLE_REGISTER;
@@ -73,17 +84,21 @@ bool modbus_read_single_register(uint16_t reg_addr, uint16_t *value) {
     frame[6] = crc & 0xFF;
     frame[7] = crc >> 8;
 
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOG_BUFFER_HEX("TX", frame, sizeof(frame));
+#endif
+
     SERVO_MOTOR_rs485_send_bytes(frame, sizeof(frame));
 
-    // 等待响应
-    vTaskDelay(pdMS_TO_TICKS(20));
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     uint8_t rx_buf[256];
     int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(100));
 
     if (rx_len >= 7) {
+#ifdef SERVO_MOTOR_DEBUG
         ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
+#endif
         uint16_t crc_calc = modbus_crc16(rx_buf, rx_len - 2);
         uint16_t crc_recv = rx_buf[rx_len - 2] | (rx_buf[rx_len - 1] << 8);
         if (crc_calc != crc_recv) {
@@ -92,7 +107,8 @@ bool modbus_read_single_register(uint16_t reg_addr, uint16_t *value) {
         }
         *value = (rx_buf[3] << 8) | rx_buf[4];
         return true;
-    } else {
+    }
+    else {
         ESP_LOGW(TAG, "No valid response from device.");
         return false;
     }
@@ -117,16 +133,26 @@ void SERVO_MOTOR_modbus_write_multi_register(uint16_t reg_addr, uint32_t value) 
     frame[11] = crc & 0xFF;
     frame[12] = crc >> 8;
 
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOG_BUFFER_HEX("TX", frame, sizeof(frame));
+#endif
+
     SERVO_MOTOR_rs485_send_bytes(frame, sizeof(frame));
 
-    vTaskDelay(pdMS_TO_TICKS(20));
+    vTaskDelay(pdMS_TO_TICKS(100));
     uint8_t rx_buf[256];
     int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(100));
-    if (rx_len > 0) ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
-    else
+
+    if (rx_len > 0) {
+#ifdef SERVO_MOTOR_DEBUG
+        ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
+#endif
+    }
+    else {
         ESP_LOGW(TAG, "No response from device.");
-    vTaskDelay(pdMS_TO_TICKS(50));
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(100));
 }
 
 /********** 读 32位寄存器  **********/
@@ -137,16 +163,19 @@ int32_t SERVO_MOTOR_modbus_read_position(uint16_t reg_high, uint16_t reg_low) {
     frame[2] = reg_high >> 8;
     frame[3] = reg_high & 0xFF;
     frame[4] = 0x00;
-    frame[5] = 0x02;   // 一共读 2 个寄存器（高位和低位）
+    frame[5] = 0x02; // 一共读 2 个寄存器（高位和低位）
 
     uint16_t crc = modbus_crc16(frame, 6);
     frame[6] = crc & 0xFF;
     frame[7] = crc >> 8;
 
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOG_BUFFER_HEX("TX", frame, sizeof(frame));
+#endif
+
     SERVO_MOTOR_rs485_send_bytes(frame, sizeof(frame));
 
-    vTaskDelay(pdMS_TO_TICKS(50));
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     uint8_t rx_buf[256];
     int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(200));
@@ -156,21 +185,20 @@ int32_t SERVO_MOTOR_modbus_read_position(uint16_t reg_high, uint16_t reg_low) {
         return 0;
     }
 
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
+#endif
 
     // 按 Modbus 协议解析：
-    // rx_buf[0] = 从站地址
-    // rx_buf[1] = 功能码 (0x03)
-    // rx_buf[2] = 字节数 (应该是 4)
-    // rx_buf[3..6] = 高 16 位 + 低 16 位
     uint16_t high = (rx_buf[3] << 8) | rx_buf[4];
     uint16_t low = (rx_buf[5] << 8) | rx_buf[6];
 
-    int32_t value = ((int32_t) high << 16) | low;
+    int32_t value = ((int32_t)high << 16) | low;
 
     ESP_LOGI("POSITION", "Decoded position = %ld", value);
     return value;
 }
+
 
 /********** UART初始化 **********/
 void SERVO_MOTOR_init(void) {
@@ -178,17 +206,17 @@ void SERVO_MOTOR_init(void) {
     if (uart_initialized) return;
 
     uart_config_t uart_config = {
-            .baud_rate = SERVO_MOTOR_RS485_BAUDRATE,
-            .data_bits = UART_DATA_8_BITS,
-            .parity    = UART_PARITY_DISABLE,
-            .stop_bits = UART_STOP_BITS_1,
-            .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
+        .baud_rate = SERVO_MOTOR_RS485_BAUDRATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE
     };
 
     ESP_ERROR_CHECK(uart_driver_install(SERVO_MOTOR_UART_NUM, 1024, 0, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(SERVO_MOTOR_UART_NUM, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(SERVO_MOTOR_UART_NUM, LeftRight485_TX, LeftRight485_RX,
-                                 UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+        UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     ESP_ERROR_CHECK(uart_set_mode(SERVO_MOTOR_UART_NUM, UART_MODE_RS485_HALF_DUPLEX));
     ESP_LOGI(TAG, "LeftRight UART initialized.");
     uart_initialized = true;
@@ -196,57 +224,83 @@ void SERVO_MOTOR_init(void) {
 }
 
 /********** 通用功能 **********/
+void SERVO_MOTOR_read_pos() {
+    uint16_t pos;
+#ifdef SERVO_MOTOR_DEBUG
+    ESP_LOGI(TAG, "---   伺服电机位置 ---");
+#endif
+    if (modbus_read_single_register(0x55, &pos))
+        ESP_LOGI(TAG, "位置 0 到位 1 不到位: %u", pos);
+}
+
 void SERVO_MOTOR_read_Voltage() {
     uint16_t V;
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOGI(TAG, "---   伺服电机电压 ---");
+#endif
     if (modbus_read_single_register(0xE1, &V))
         ESP_LOGI(TAG, "电压: %u V", V);
 }
 
 void SERVO_MOTOR_read_Electric() {
     uint16_t A;
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOGI(TAG, "---   伺服电机电流 ---");
+#endif
+
     if (modbus_read_single_register(0xE2, &A))
         ESP_LOGI(TAG, "电流: %.2f A", A / 10.0f);
 }
 
 void SERVO_MOTOR_Clear_the_fault(void) {
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOGI(TAG, "--- 清除伺服故障 ---");
+#endif
     SERVO_MOTOR_modbus_write_single_register(0x4A, 0x00);
 }
 
 void SERVO_MOTOR_Start(void) {
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOGI(TAG, "--- 伺服电机启动 ---");
+#endif
     SERVO_MOTOR_modbus_write_single_register(0x00, 0x01);
 }
 
 void SERVO_MOTOR_Stop(void) {
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOGI(TAG, "--- 伺服电机停止 ---");
+#endif
     SERVO_MOTOR_modbus_write_single_register(0x00, 0x00);
 }
 
 /********** 速度模式 **********/
 void SERVO_MOTOR_Set_Speed_Mode(void) {
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOGI(TAG, "--- 设置速度模式 ---");
-    SERVO_MOTOR_modbus_write_single_register(0x02, 0xC4);  // 假设速度模式值
+#endif
+    SERVO_MOTOR_modbus_write_single_register(0x02, 0xC4); // 假设速度模式值
 }
 
 void SERVO_MOTOR_Set_Speed(int32_t speed_value) {
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOGI(TAG, "--- 设置速度 ---");
-    int32_t reg_value = (speed_value * 8192) / 3000;            // 转速转 Modbus 数据
+#endif
+    int32_t reg_value = (speed_value * 8192) / 3000; // 转速转 Modbus 数据
     SERVO_MOTOR_modbus_write_single_register(0x06, reg_value);
 }
 
 /********** 位置清零 **********/
 void SERVO_MOTOR_Clear_Position(void) {
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOGI(TAG, "--- 位置清零 ---");
+#endif
     // 根据手册：0x4C 地址，值 = 0
     SERVO_MOTOR_modbus_write_single_register(0x4C, 0x00);
 }
 
-static const char *TAG_SYSTEM = "SYSTEM--Notice";
+static const char* TAG_SYSTEM = "SYSTEM--Notice";
 
-void SERVO_MOTOR_Move_To_Position(SensorFunc sensor_get_state, float speed, const char *desc) {
+void SERVO_MOTOR_Move_To_Position(SensorFunc sensor_get_state, float speed, const char* desc) {
     SERVO_MOTOR_Clear_the_fault();
     SERVO_MOTOR_Set_Speed_Mode();
     SERVO_MOTOR_Start();
@@ -259,7 +313,7 @@ void SERVO_MOTOR_Move_To_Position(SensorFunc sensor_get_state, float speed, cons
     SERVO_MOTOR_Set_Speed(speed);
     // 一直检测，直到传感器触发
     while (sensor_get_state() != 0) {
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
     // 停止电机
     SERVO_MOTOR_Set_Speed(0);
@@ -270,25 +324,28 @@ void SERVO_MOTOR_Move_To_Position(SensorFunc sensor_get_state, float speed, cons
 
 /********** 位置模式 **********/
 void SERVO_MOTOR_set_Location_Mode(int relative) {
+#ifdef SERVO_MOTOR_DEBUG
     ESP_LOGI(TAG, "--- 设置位置模式 ---");
-    SERVO_MOTOR_modbus_write_single_register(0x02, 0xD0);
+#endif
+    SERVO_MOTOR_modbus_write_single_register(0x02, 0xD0); // 位置模式
     if (relative == 0) {
-        SERVO_MOTOR_modbus_write_single_register(0x51, 0x00);  // 绝对位置
+        SERVO_MOTOR_modbus_write_single_register(0x51, 0x00); // 绝对位置
         ESP_LOGI(TAG, ">>> 已设置为绝对位置模式");
-    } else {
-        SERVO_MOTOR_modbus_write_single_register(0x51, 0x01);  // 相对位置
+    }
+    else {
+        SERVO_MOTOR_modbus_write_single_register(0x51, 0x01); // 相对位置
         ESP_LOGI(TAG, ">>> 已设置为相对位置模式");
     }
 }
 
 void SERVO_MOTOR_Set_Position_Speed(uint16_t target_rpm) {
-    const uint16_t MAX_RPM = 3000;   // 手册标定最大速度
-    const uint16_t MAX_REG = 8192;   // 对应最大速度寄存器值
+    const uint16_t MAX_RPM = 3000; // 手册标定最大速度
+    const uint16_t MAX_REG = 8192; // 对应最大速度寄存器值
     if (target_rpm > MAX_RPM) {
-        target_rpm = MAX_RPM;  // 限幅
+        target_rpm = MAX_RPM; // 限幅
     }
     // 线性换算：寄存器值 = target_rpm / MAX_RPM * MAX_REG
-    uint16_t reg_value = ((uint32_t) target_rpm * MAX_REG) / MAX_RPM;
+    uint16_t reg_value = ((uint32_t)target_rpm * MAX_REG) / MAX_RPM;
     ESP_LOGI(TAG, "设置位置模式最高速度: %d RPM -> 寄存器值: %d", target_rpm, reg_value);
     // 写入寄存器0x1D
     SERVO_MOTOR_modbus_write_single_register(0x1D, reg_value);
@@ -304,39 +361,131 @@ int32_t SERVO_MOTOR_Read_Command_Position(void) {
     return SERVO_MOTOR_modbus_read_position(0xE6, 0xE7);
 }
 
-void SERVO_MOTOR_Move_Position_Speed(int speed_rpm, int position, int mode, SensorFunc sensor_func) {
+// void SERVO_MOTOR_Move_Position_Speed(int speed_rpm, int32_t position, int mode, SensorFunc sensor_func) {
+//     // 清除故障
+//     SERVO_MOTOR_Clear_the_fault();
+//     // 启动电机
+//     SERVO_MOTOR_Start();
+//     // 设置位置模式的最高速度
+//     SERVO_MOTOR_Set_Position_Speed(speed_rpm);
+//     // 设置为位置模式（0=绝对，1=相对）
+//     SERVO_MOTOR_set_Location_Mode(mode);
+//
+//     // ====== 先检测一次传感器 ======
+//     if (sensor_func != NULL && sensor_func() == 0) {
+//         ESP_LOGW("SERVO_MOVE", "启动前传感器已触发，直接停止电机");
+//         SERVO_MOTOR_Stop();
+//         return;
+//     }
+//
+//     //发送目标位置
+//     SERVO_MOTOR_modbus_write_multi_register(0x50, position);
+//
+//     // ====== 发完位置后继续检测传感器 ======
+//     if (sensor_func != NULL) {
+//         while (1) {
+//             if (sensor_func() == 0) {
+//                 ESP_LOGI("SERVO_MOVE", "传感器触发，停止电机");
+//                 break;
+//             }
+//             vTaskDelay(pdMS_TO_TICKS(10)); // 10ms 检测一次
+//         }
+//     }
+//      //停止电机（根据需求选择是否立即停）
+//      SERVO_MOTOR_Stop();
+// }
+
+void SERVO_MOTOR_POS_Reg(int speed_rpm, int32_t position, int mode, bool use_sensor) {
     // 清除故障
     SERVO_MOTOR_Clear_the_fault();
     // 启动电机
     SERVO_MOTOR_Start();
     // 设置位置模式的最高速度
     SERVO_MOTOR_Set_Position_Speed(speed_rpm);
-    // 设置为位置模式
-    SERVO_MOTOR_set_Location_Mode(mode);        //0--绝对  1--相对
+    // 设置为位置模式（0=绝对，1=相对）
+    SERVO_MOTOR_set_Location_Mode(mode);
 
-    // ====== 先检测一次传感器 ======
-    if (sensor_func != NULL && sensor_func() == 0) {
-        ESP_LOGW("SERVO_MOVE", "启动前传感器已触发，直接停止电机");
-        SERVO_MOTOR_Stop();
-        return;
-    }
-
-    //发送目标位置
-    ESP_LOGI("SERVO_MOVE", "Move to position=%d, speed=%d RPM", position, speed_rpm);
+    // 发送目标位置
     SERVO_MOTOR_modbus_write_multi_register(0x50, position);
+    ESP_LOGI("SERVO_MOVE", "已发送目标位置: %ld，开始监测到位状态", position);
 
-    // ====== 发完位置后继续检测传感器 ======
-    if (sensor_func != NULL) {
-        while (1) {
-            if (sensor_func() == 0) {
+    // ====== 判断检测模式 ======
+    if (use_sensor) {
+        ESP_LOGI("SERVO_MOVE", "启用传感器检测模式");
+
+        // 使用传感器检测是否到位
+        const int max_wait_ms = 10000; // 超时时间 10 秒
+        int elapsed_ms = 0;
+
+        while (elapsed_ms < max_wait_ms) {
+            if (sensor_Right_get_state() == 0) {
                 ESP_LOGI("SERVO_MOVE", "传感器触发，停止电机");
                 break;
             }
-            vTaskDelay(pdMS_TO_TICKS(10)); // 10ms 检测一次
+            vTaskDelay(pdMS_TO_TICKS(100)); // 10ms 检测一次
+            elapsed_ms += 10;
         }
+
+        if (elapsed_ms >= max_wait_ms)
+            ESP_LOGW("SERVO_MOVE", "等待超时，传感器未触发");
+    }
+    else {
+        ESP_LOGI("SERVO_MOVE", "启用寄存器检测模式");
+
+        // ====== 轮询寄存器判定是否到位 ======
+        uint16_t pos_status = 1;
+        const int max_wait_ms = 10000; // 超时时间 10 秒
+        int elapsed_ms = 0;
+
+        while (elapsed_ms < max_wait_ms) {
+            if (modbus_read_single_register(0x55, &pos_status)) {
+                if (pos_status == 0) {
+                    // 到位信号
+                    ESP_LOGI("SERVO_MOVE", "位置已到位 (寄存器值=%u)", pos_status);
+                    break;
+                }
+                else {
+                    ESP_LOGD("SERVO_MOVE", "位置未到位 (寄存器值=%u)", pos_status);
+                }
+            }
+            else {
+                ESP_LOGW("SERVO_MOVE", "读取寄存器失败");
+            }
+
+            vTaskDelay(pdMS_TO_TICKS(200));
+            elapsed_ms += 200;
+        }
+
+        if (elapsed_ms >= max_wait_ms)
+            ESP_LOGW("SERVO_MOVE", "等待超时，仍未到位");
     }
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    // 停止电机（根据需求选择是否立即停）
+    // ====== 到位或超时后停止电机 ======
     SERVO_MOTOR_Stop();
+    ESP_LOGI("SERVO_MOVE", "电机已停止");
+}
+
+static bool modbus_send_and_wait_response(const uint8_t *tx_data, uint8_t tx_len,
+                                          uint8_t *rx_buf, uint16_t rx_buf_len,
+                                          uint16_t expect_min_len, const char *desc) {
+    const int MAX_RETRY = 3;
+    for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+        SERVO_MOTOR_rs485_send_bytes(tx_data, tx_len);
+        int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, rx_buf_len, pdMS_TO_TICKS(200));
+        if (rx_len >= expect_min_len) {
+            // 校验CRC
+            uint16_t crc_calc = modbus_crc16(rx_buf, rx_len - 2);
+            uint16_t crc_recv = rx_buf[rx_len - 2] | (rx_buf[rx_len - 1] << 8);
+            if (crc_calc == crc_recv) {
+                return true; // ✅ 成功
+            } else {
+                ESP_LOGW(TAG, "[%s] CRC错误，第%d次重试", desc, attempt);
+            }
+        } else {
+            ESP_LOGW(TAG, "[%s] 无响应，第%d次重试", desc, attempt);
+        }
+        vTaskDelay(pdMS_TO_TICKS(100)); // 小延时再发
+    }
+    ESP_LOGE(TAG, "[%s] 多次重试失败！", desc);
+    return false;
 }

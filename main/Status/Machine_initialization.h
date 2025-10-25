@@ -10,6 +10,9 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "Servo_motor_RS485_Speed_Location.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
 
 #include "Big_Rotate.h"
 

@@ -29,6 +29,8 @@
 #define SERVO_MOTOR_MODBUS_WRITE_SINGLE_REGISTER    0x06
 #define SERVO_MOTOR_MODBUS_WRITE_MULTIPLE_REGISTER  0x10
 
+// 是否启用调试日志（收发帧打印）
+#define SERVO_MOTOR_DEBUG  // 注释掉则关闭日志
 /* ------------------- 公共函数 ------------------- */
 
 /**
@@ -64,9 +66,15 @@ void SERVO_MOTOR_modbus_write_multi_register(uint16_t reg_addr, uint32_t value);
 * @param value    读取到的数值指针
 * @return true 成功，false 失败
 */
-bool modbus_read_single_register(uint16_t reg_addr, uint16_t *value);
+bool modbus_read_single_register(uint16_t reg_addr, uint16_t* value);
 
 /* ------------------- 通用读写 ------------------- */
+/**
+* @CreateTime 2025/10/22
+* @Author Star-Hill
+* @brief 读取位置输出
+*/
+void SERVO_MOTOR_read_pos();
 
 /**
 * @CreateTime 2025/9/10
@@ -104,7 +112,6 @@ void SERVO_MOTOR_Start(void);
 void SERVO_MOTOR_Stop(void);
 
 /* ------------------- 速度模式 ------------------- */
-
 /**
 * @CreateTime 2025/9/10
 * @Author Star-Hill
@@ -130,15 +137,15 @@ void SERVO_MOTOR_Clear_Position(void);
 // 定义传感器函数指针类型（返回传感器状态）
 typedef int (*SensorFunc)(void);
 
-/**
-* @CreateTime 2025/9/10
-* @Author Star-Hill
-* @brief 控制伺服电机移动到指定位置
-* @param sensor_get_state 传感器检测函数
-* @param speed 正数向右 || 负数向左
-* @param desc  日志输出说明
-*/
-void SERVO_MOTOR_Move_To_Position(SensorFunc sensor_get_state, float speed, const char *desc);
+// /**
+// * @CreateTime 2025/9/10
+// * @Author Star-Hill
+// * @brief 控制伺服电机移动到指定位置
+// * @param sensor_get_state 传感器检测函数
+// * @param speed 正数向右 || 负数向左
+// * @param desc  日志输出说明
+// */
+// void SERVO_MOTOR_Move_To_Position(SensorFunc sensor_get_state, float speed, const char* desc);
 
 /* ------------------- 位置模式 ------------------- */
 
@@ -169,10 +176,20 @@ int32_t SERVO_MOTOR_Read_Command_Position(void);
  * @Author Star-Hill
  * @brief 伺服电机使用位置模式设置峰值速度和位置
  * @param speed_rpm 峰值速度，单位RPM
- * @param position 移动位置 , 原点为右 0 , 中间为 -150000 , 左边为 -280000
+ * @param position 移动位置 , 原点为右 0 , 中间为 -297300 , 左边为 -561000
  * @param mode 0--绝对  1--相对
- * @param check_sensor
+ * @param sensor_func 传感器函数调用
  */
-void SERVO_MOTOR_Move_Position_Speed(int speed_rpm, int position ,int mode ,SensorFunc sensor_func);
+void SERVO_MOTOR_Move_Position_Speed(int speed_rpm, int32_t position, int mode, SensorFunc sensor_func);
+/**
+ * @CreateTime 2025/10/23
+ * @Author Star-Hill
+ * @brief 伺服电机使用位置模式设置峰值速度和位置
+ * @param speed_rpm 峰值速度，单位RPM
+ * @param position 移动位置 , 原点为右 0 , 中间为 -300000 , 左边为 -555000
+ * @param mode 0--绝对  1--相对
+ * @param use_sensor ture--轮询右传感器  false--轮询寄存器
+ */
+void SERVO_MOTOR_POS_Reg(int speed_rpm, int32_t position, int mode, bool use_sensor);
 
 #endif //AUTO_PETRI_DISH_CLION_SERVO_MOTOR_RS485_SPEED_LOCATION_H

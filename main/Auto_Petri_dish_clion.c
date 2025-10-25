@@ -19,8 +19,8 @@ void app_main(void) {
     All_init();
 
     //上电自动校准
-    Machine_initialization();
-    ESP_LOGI("系统日志", "上电自动校准完成，开始命令队列初始");
+    //Machine_initialization();
+    //ESP_LOGW("系统日志", "上电自动校准完成，开始命令队列初始");
 
     /**
     * @CreateTime 2025/9/8

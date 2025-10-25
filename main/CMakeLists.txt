@@ -39,4 +39,5 @@ idf_component_register(
             esp_driver_uart
             nvs_flash
             esp_driver_rmt
+
 )
