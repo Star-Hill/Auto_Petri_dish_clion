@@ -4,27 +4,28 @@
 
 #include "Instrument_starts_canning.h"
 
-static const char *TAG_SYSTEM = "SYSTEM--Notice";
+static const char* TAG_SYSTEM = "SYSTEM--Notice";
 
-static TaskHandle_t plateDetectTaskHandle = NULL;   //检测盘子任务句柄
-static TaskHandle_t motorTaskHandle = NULL;         // 电机任务句柄
-static int plate_result = 0;  // 0=未检测到, 1=检测到
+static TaskHandle_t plateDetectTaskHandle = NULL; //检测盘子任务句柄
+static TaskHandle_t motorTaskHandle = NULL; // 电机任务句柄
+static int plate_result = 0; // 0=未检测到, 1=检测到
 /********************************   检查取盘  START  ***********************************/
 // 电机任务
-void MotorTask(void *pvParameters) {
-    float gear = *(float *) pvParameters;
-    SERVO_MOTOR_POS_Reg((int)(1000 * gear),-300000,0,false);
+void MotorTask(void* pvParameters) {
+    float gear = *(float*)pvParameters;
+    SERVO_MOTOR_POS_Reg((int)(1000 * gear), -300000, 0,false);
     vTaskDelete(NULL); // 任务完成后自删
 }
 
 // 培养皿检测任务
-void PlateDetectTask(void *pvParameters) {
+void PlateDetectTask(void* pvParameters) {
     const int total_time_ms = 4000; // 运动总时长约4秒
     const int check_interval_ms = 50;
     int elapsed_time = 0;
 
     while (elapsed_time < total_time_ms) {
-        if (sensor_Entrance_get_state() == 0) { // 检测到培养皿
+        if (sensor_Entrance_get_state() == 0) {
+            // 检测到培养皿
             ESP_LOGI(TAG_SYSTEM, "成功检测到培养皿");
             plate_result = 1;
             break;
@@ -37,43 +38,46 @@ void PlateDetectTask(void *pvParameters) {
     }
     vTaskDelete(NULL); // 自删
 }
+
 /********************************   检查取盘   END    ***********************************/
 
 /*****************************   蠕动泵 & 旋转  Start    *********************************/
-int volatile task_done_count = 0;                   //蠕动泵和旋转并行任务检测
+int volatile task_done_count = 0; //蠕动泵和旋转并行任务检测
 
-typedef struct {   //蠕动泵的结构体定义
-    int rpm;       // 转速
-    int volume;  // 目标体积 (mL)
+typedef struct {
+    //蠕动泵的结构体定义
+    int rpm; // 转速
+    int volume; // 目标体积 (mL)
 } PumpParam_t;
 
 // 25# 管号专用流量表 (mL/min)
 float get_flow_rate_25(int rpm) {
     switch (rpm) {
-        case 30:
-            return 27;
-        case 60:
-            return 55;
-        case 100:
-            return 92;
-        case 200:
-            return 184;
-        case 400:
-            return 370;
-        case 600:
-            return 550;
-        default:
-            return 0; // 不支持的转速
+    case 30:
+        return 27;
+    case 60:
+        return 55;
+    case 100:
+        return 92;
+    case 200:
+        return 184;
+    case 400:
+        return 370;
+    case 600:
+        return 550;
+    default:
+        return 0; // 不支持的转速
     }
 }
 
 float PPSS = 0.0f;
 
 //蠕动泵任务
-void PeristalticPumpTask(void *pvParameters) {
+void PeristalticPumpTask(void* pvParameters) {
     uart_set_baudrate(SERVO_MOTOR_UART_NUM, 9600);
-    PumpParam_t *param = (PumpParam_t *) pvParameters;
-    if (!param) {   // 防止 NULL 崩溃
+    PumpParam_t* param = (PumpParam_t*)pvParameters;
+    if (!param) {
+        // 防止 NULL 崩溃
         ESP_LOGE(TAG_SYSTEM, "PumpTask 参数为空");
         vTaskDelete(NULL);
         return;
@@ -88,8 +92,8 @@ void PeristalticPumpTask(void *pvParameters) {
         vTaskDelete(NULL);
         return;
     }
-    float flow_mL_s = flow_mL_min / 60.0f;      // 转换成 mL/s
-    float time_s = (float) param->volume / flow_mL_s;   // 计算运行时间
+    float flow_mL_s = flow_mL_min / 60.0f; // 转换成 mL/s
+    float time_s = (float)param->volume / flow_mL_s; // 计算运行时间
     PPSS = time_s;
     ESP_LOGI(TAG_SYSTEM,
              "目标体积=%.2d mL, 转速=%d rpm, 25#管, 流量=%.2f mL/min, 运行时间=%.2f s",
@@ -106,8 +110,8 @@ void PeristalticPumpTask(void *pvParameters) {
 }
 
 // 任务2：控制小旋转电机      两圈
-void LittleRotateMotorTask(void *pvParameters) {
-    float angle = 360.0f * ceilf(PPSS / 3);   // 电机要转的角度
+void LittleRotateMotorTask(void* pvParameters) {
+    float angle = 360.0f * ceilf(PPSS / 3); // 电机要转的角度
     Little_stepper_rotate_US(angle, 20.0f, 1);
     task_done_count++;
     ESP_LOGI(TAG_SYSTEM, "旋转培养皿 完毕");
@@ -116,7 +120,7 @@ void LittleRotateMotorTask(void *pvParameters) {
 
 //调用    Peristaltic_Steeping  同步函数
 void Peristaltic_Steeping(int volume, int rpm) {
-    PumpParam_t *param = pvPortMalloc(sizeof(PumpParam_t));
+    PumpParam_t* param = pvPortMalloc(sizeof(PumpParam_t));
     if (!param) {
         ESP_LOGE(TAG_SYSTEM, "内存分配失败");
         return;
@@ -125,6 +129,7 @@ void Peristaltic_Steeping(int volume, int rpm) {
     param->rpm = rpm;
 
     xTaskCreate(PeristalticPumpTask, "PumpTask", 4096, param, 5, NULL);
+    vTaskDelay(pdMS_TO_TICKS(100));
     xTaskCreate(LittleRotateMotorTask, "MotorTask", 4096, NULL, 5, NULL);
 
     // 等待两个任务完成
@@ -133,27 +138,28 @@ void Peristaltic_Steeping(int volume, int rpm) {
     }
     task_done_count = 0;
 }
+
 /*****************************   蠕动泵 & 旋转  End    *********************************/
 
 /*****************   柱体电机旋转 45 度 Start *******************/
-void BigRotateMotorTask(void *pvParameters) {
-    float gear = *(float *) pvParameters;
-    Big_ROTATE_stepper_rotate_US(45.0f, 3.0f * gear, 1, false);
+void BigRotateMotorTask(void* pvParameters) {
+    float gear = *(float*)pvParameters;
+    Big_ROTATE_stepper_rotate_US(45.0f, 3.5f, 1, false);
     ESP_LOGI(TAG_SYSTEM, "柱体电机旋转 45 度 完毕  到达满柱体  当前挡位 %.2f", gear);
-    vTaskDelete(NULL);  // 执行完毕自动删除
+    vTaskDelete(NULL); // 执行完毕自动删除
 }
 
 /*****************   柱体电机旋转 45 度 End *******************/
 void All_init(void) {
-    sensor_ALL_init();                      //  初始化所有传感器
-    Big_ROTATE_stepper_init();              //  初始化并使能柱体旋转电机
-    Little_stepper_init();                  //  培养皿旋转电机
-    UpDown_stepper_init();                  //  初始化并使能升降电机
-    SERVO_MOTOR_init();                     //  左右电机初始化
+    sensor_ALL_init(); //  初始化所有传感器
+    Big_ROTATE_stepper_init(); //  初始化并使能柱体旋转电机
+    Little_stepper_init(); //  培养皿旋转电机
+    UpDown_stepper_init(); //  初始化并使能升降电机
+    SERVO_MOTOR_init(); //  左右电机初始化
     //  蠕动泵  和  伺服电机服用
-    Pump_driver_init();                     //  泵初始化
-    valve_driver_init();                    //  电磁阀初始化
-    uart_hmi_init();                        // 初始化硬件串口
+    Pump_driver_init(); //  泵初始化
+    valve_driver_init(); //  电磁阀初始化
+    uart_hmi_init(); // 初始化硬件串口
     ESP_LOGI(TAG_SYSTEM, "所有设备初始化完成");
 }
 
@@ -161,7 +167,7 @@ void All_init(void) {
 int check_and_pick_plate(float gear) {
     vTaskDelay(pdMS_TO_TICKS(200));
 
-    UpDown_stepper_rotate(1220.0f, 60.0f * gear, 1, 0);
+    UpDown_stepper_rotate(1220.0f, 80.0f * gear, 1, 0);
     check_pause();
 
     Pump_Valve_run_combo(0, 1);
@@ -176,7 +182,7 @@ int check_and_pick_plate(float gear) {
 
     // 等待两个任务都结束
     while (eTaskGetState(motorTaskHandle) != eDeleted ||
-           eTaskGetState(plateDetectTaskHandle) != eDeleted) {
+        eTaskGetState(plateDetectTaskHandle) != eDeleted) {
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     return plate_result;
@@ -188,7 +194,7 @@ int check_and_pick_plate(float gear) {
 void Success(float gear, int volume, int rpm) {
     vTaskDelay(pdMS_TO_TICKS(200));
     /************************   升降电机--上限位置    ***************************/
-    UpDown_stepper_rotate(630.0f, 50.0f * gear, 1, 0);      //上盖位置
+    UpDown_stepper_rotate(640.0f, 80.0f * gear, 1, 0); //上盖位置
     vTaskDelay(pdMS_TO_TICKS(100));
     check_pause();
 
@@ -198,33 +204,33 @@ void Success(float gear, int volume, int rpm) {
     check_pause();
 
     /************************   升降电机--吐液位置    ***************************/
-    UpDown_stepper_rotate(650.0f, 50.0f * gear, 0, 0);      //开盖
+    UpDown_stepper_rotate(660.0f, 80.0f * gear, 0, 0); //开盖
     vTaskDelay(pdMS_TO_TICKS(100));
     check_pause();
 
     /****************   左右电机--左位置    *******************/
-    SERVO_MOTOR_POS_Reg((int)(1000 * gear),-555000,0,false);
+    SERVO_MOTOR_POS_Reg((int)(1000 * gear), -555000, 0,false);
     check_pause();
-
-    /****************   柱体电机--转45度  罐装完毕的柱体    *******************/
-    xTaskCreate(BigRotateMotorTask, "BigRotateTask", 4096, &gear, 5, NULL);
-    ESP_LOGI(TAG_SYSTEM, "移动到罐装完毕的柱体");
 
     /****************   蠕动泵输出营养液  电机旋转  *******************/
     Peristaltic_Steeping(volume, rpm);
     check_pause();
 
     /****************   小旋转电机--左-->中位置   逆时针   *******************/
-    Little_stepper_rotate_US(720.0f, 20.0f, 0);              //两圈
+    Little_stepper_rotate_US(720.0f, 30.0f, 0); //两圈
     check_pause();
 
     /****************   左右电机--中位置    *******************/
     uart_set_baudrate(SERVO_MOTOR_UART_NUM, 57600);
-    SERVO_MOTOR_POS_Reg((int)(1000 * gear),-300000,0,false);
+    SERVO_MOTOR_POS_Reg((int)(1000 * gear), -300000, 0,false);
     check_pause();
 
+    /****************   柱体电机--转45度  罐装完毕的柱体    *******************/
+    xTaskCreate(BigRotateMotorTask, "BigRotateTask", 4096, &gear, 5, NULL);
+    ESP_LOGI(TAG_SYSTEM, "移动到罐装完毕的柱体");
+
     /************************   升降电机--上限位置    ***************************/
-    UpDown_stepper_rotate(650.0f, 50.0f * gear, 1, 0);
+    UpDown_stepper_rotate(660.0f, 80.0f * gear, 1, 0);
     check_pause();
 
     /***************   关闭上磁阀和上气泵电机    ******************/
@@ -233,15 +239,15 @@ void Success(float gear, int volume, int rpm) {
     check_pause();
 
     /************************   升降电机--下限位置    ***************************/
-    UpDown_stepper_rotate(1850.0f, 50.0f * gear, 0, 0);
+    UpDown_stepper_rotate(1860.0f, 80.0f * gear, 0, 0);
     check_pause();
 
     /****************   左右电机--右位置    *******************/
-    SERVO_MOTOR_POS_Reg((int)(1000 * gear),-4500,0,false);
+    SERVO_MOTOR_POS_Reg((int)(1000 * gear), -4500, 0,false);
     check_pause();
 
     /************************   升降电机--上限位置    ***************************/
-    UpDown_stepper_rotate(1850.0f, 50.0f , 1, 0);
+    UpDown_stepper_rotate(1850.0f, 80.0f, 1, 0);
     check_pause();
 
     /***************   关闭下磁阀和下气泵电机    ******************/
@@ -249,11 +255,12 @@ void Success(float gear, int volume, int rpm) {
     check_pause();
 
     /************************   升降电机--下限位置    ***************************/
-    UpDown_stepper_rotate(1850.0f, 50.0f * gear, 0, 0);
+    // UpDown_stepper_rotate(1850.0f, 40.0f, 0, 0);
+    UpDown_stepper_rotate(2200.0f, 40.0f, 0, 2);
     check_pause();
 
     /****************   柱体电机--转-45度  空盒子    *******************/
-    Big_ROTATE_stepper_rotate_US(45.0f, 3.0f * gear, 1, false);
+    Big_ROTATE_stepper_rotate_US(45.0f, 3.5f, 1, false);
     check_pause();
 }
 
@@ -262,16 +269,16 @@ void Success(float gear, int volume, int rpm) {
  * */
 static SemaphoreHandle_t failureSem = NULL;
 
-void BigRotateTask(void *pvParameters) {
-    const float gear = *(float *) pvParameters;
-    Big_ROTATE_stepper_rotate_US(90.0f, 3.0f * gear, 1, false);
+void BigRotateTask(void* pvParameters) {
+    const float gear = *(float*)pvParameters;
+    Big_ROTATE_stepper_rotate_US(90.0f, 3.5f, 1, false);
 
     xSemaphoreGive(failureSem);
     vTaskDelete(NULL);
 }
 
-void LeftRightMotorTask(void *pvParameters) {
-    float gear = *(float *) pvParameters;
+void LeftRightMotorTask(void* pvParameters) {
+    float gear = *(float*)pvParameters;
     SERVO_MOTOR_POS_Reg((int)(1000 * gear), -5850, 0, false);
 
     xSemaphoreGive(failureSem);
@@ -283,13 +290,14 @@ void Failure(float gear) {
     Pump_Valve_run_combo(0, 0);
     check_pause();
 
-    UpDown_stepper_rotate(1220.0f, 50.0f * gear, 0, 0);
+    UpDown_stepper_rotate(1220.0f, 80.0f * gear, 0, 0);
     check_pause();
 
     // 创建信号量（最大计数2）
     if (failureSem == NULL) {
         failureSem = xSemaphoreCreateCounting(2, 0);
-    } else {
+    }
+    else {
         xSemaphoreTake(failureSem, 0); // 清空
         xSemaphoreTake(failureSem, 0);
     }
@@ -305,21 +313,22 @@ void Failure(float gear) {
 }
 
 
-
 /*
  * 数量,体积,挡位
  * */
 void Instrument_starts_canning(int num, int volume, float gear, int rpm) {
-    int produced_count = 0;   // 已经制作的数量
-    char buf[64];             // 发送缓冲区
+    int produced_count = 0; // 已经制作的数量
+    char buf[64]; // 发送缓冲区
 
-    for (int column = 0; column < 4; column++) {  // 4个柱子
+    for (int column = 0; column < 4; column++) {
+        // 4个柱子
         ESP_LOGI(TAG_SYSTEM, "开始检测第 %d 根柱子", column + 1);
 
         int result = check_and_pick_plate(gear);
-        if (result == 1) { // 成功
+        if (result == 1) {
+            // 成功
             Success(gear, volume, rpm);
-            produced_count++;   // 成功制作一个培养皿
+            produced_count++; // 成功制作一个培养皿
             ESP_LOGI(TAG_SYSTEM, "第 %d 根柱子检测成功", column + 1);
             ESP_LOGI(TAG_SYSTEM, "累计完成数量: %d / %d", produced_count, num);
 
@@ -332,9 +341,11 @@ void Instrument_starts_canning(int num, int volume, float gear, int rpm) {
                 return; // 直接退出函数
             }
             // 成功后重新从第0根柱子开始
-            column = -1;            // 因为for循环结束会 column++，所以这里设 -1
+            column = -1; // 因为for循环结束会 column++，所以这里设 -1
             continue;
-        } else { // 失败
+        }
+        else {
+            // 失败
             Failure(gear);
             ESP_LOGW(TAG_SYSTEM, "第 %d 根柱子检测失败", column + 1);
         }

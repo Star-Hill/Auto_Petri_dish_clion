@@ -6,6 +6,9 @@
 #include "sensor.h"
 
 #define TAG "SERVO_MOTOR_RS485"
+#define MODBUS_MAX_RETRY 5     // 最大重试次数
+#define MODBUS_DELAY_MS  100   // 每次通信等待延迟
+
 
 // ====== CRC16 校验函数 (Modbus RTU，多项式 0xA001，低字节先发)
 static uint16_t modbus_crc16(const uint8_t* buf, uint16_t len) {
@@ -16,8 +19,7 @@ static uint16_t modbus_crc16(const uint8_t* buf, uint16_t len) {
             if (crc & 0x0001) {
                 crc >>= 1;
                 crc ^= 0xA001;
-            }
-            else {
+            } else {
                 crc >>= 1;
             }
         }
@@ -31,10 +33,10 @@ static void SERVO_MOTOR_rs485_send_bytes(const uint8_t* data, uint8_t length) {
     if (uart_write_bytes(SERVO_MOTOR_UART_NUM, (const char*)data, length) != length) {
         ESP_LOGE(TAG, "Send data failed.");
     }
-    uart_wait_tx_done(SERVO_MOTOR_UART_NUM, pdMS_TO_TICKS(100));
+    uart_wait_tx_done(SERVO_MOTOR_UART_NUM, pdMS_TO_TICKS(MODBUS_DELAY_MS));
 }
 
-/********** 写单寄存器 **********/
+/********** 写单寄存器（带重试） **********/
 void SERVO_MOTOR_modbus_write_single_register(uint16_t reg_addr, uint16_t value) {
     uint8_t frame[8];
     frame[0] = SERVO_MOTOR_SLAVE_ADDR;
@@ -52,25 +54,34 @@ void SERVO_MOTOR_modbus_write_single_register(uint16_t reg_addr, uint16_t value)
     ESP_LOG_BUFFER_HEX("TX", frame, sizeof(frame));
 #endif
 
-    SERVO_MOTOR_rs485_send_bytes(frame, sizeof(frame));
+    for (int attempt = 0; attempt < MODBUS_MAX_RETRY; attempt++) {
+        SERVO_MOTOR_rs485_send_bytes(frame, sizeof(frame));
+        vTaskDelay(pdMS_TO_TICKS(MODBUS_DELAY_MS));
 
-    vTaskDelay(pdMS_TO_TICKS(100));
-    uint8_t rx_buf[256];
-    int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(100));
+        uint8_t rx_buf[256];
+        int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(MODBUS_DELAY_MS));
 
-    if (rx_len > 0) {
+        if (rx_len >= 8) {
 #ifdef SERVO_MOTOR_DEBUG
-        ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
+            ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
 #endif
-    }
-    else {
-        ESP_LOGW(TAG, "No response from device.");
-    }
+            uint16_t crc_calc = modbus_crc16(rx_buf, rx_len - 2);
+            uint16_t crc_recv = rx_buf[rx_len - 2] | (rx_buf[rx_len - 1] << 8);
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+            if (crc_calc == crc_recv) {
+                return; // ✅ 通信成功
+            } else {
+                ESP_LOGW(TAG, "CRC error (try %d/%d)", attempt + 1, MODBUS_MAX_RETRY);
+            }
+        } else {
+            ESP_LOGW(TAG, "No response (try %d/%d)", attempt + 1, MODBUS_MAX_RETRY);
+        }
+        vTaskDelay(pdMS_TO_TICKS(MODBUS_DELAY_MS));
+    }
+    ESP_LOGE(TAG, "Write single register failed after %d retries.", MODBUS_MAX_RETRY);
 }
 
-/********** 读单寄存器 **********/
+/********** 读单寄存器（带重试） **********/
 bool modbus_read_single_register(uint16_t reg_addr, uint16_t* value) {
     uint8_t frame[8];
     frame[0] = SERVO_MOTOR_SLAVE_ADDR;
@@ -88,33 +99,35 @@ bool modbus_read_single_register(uint16_t reg_addr, uint16_t* value) {
     ESP_LOG_BUFFER_HEX("TX", frame, sizeof(frame));
 #endif
 
-    SERVO_MOTOR_rs485_send_bytes(frame, sizeof(frame));
+    for (int attempt = 0; attempt < MODBUS_MAX_RETRY; attempt++) {
+        SERVO_MOTOR_rs485_send_bytes(frame, sizeof(frame));
+        vTaskDelay(pdMS_TO_TICKS(MODBUS_DELAY_MS));
 
-    vTaskDelay(pdMS_TO_TICKS(100));
+        uint8_t rx_buf[256];
+        int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(MODBUS_DELAY_MS));
 
-    uint8_t rx_buf[256];
-    int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(100));
-
-    if (rx_len >= 7) {
+        if (rx_len >= 7) {
 #ifdef SERVO_MOTOR_DEBUG
-        ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
+            ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
 #endif
-        uint16_t crc_calc = modbus_crc16(rx_buf, rx_len - 2);
-        uint16_t crc_recv = rx_buf[rx_len - 2] | (rx_buf[rx_len - 1] << 8);
-        if (crc_calc != crc_recv) {
-            ESP_LOGE(TAG, "CRC error! Calc=0x%04X Recv=0x%04X", crc_calc, crc_recv);
-            return false;
+            uint16_t crc_calc = modbus_crc16(rx_buf, rx_len - 2);
+            uint16_t crc_recv = rx_buf[rx_len - 2] | (rx_buf[rx_len - 1] << 8);
+            if (crc_calc == crc_recv) {
+                *value = (rx_buf[3] << 8) | rx_buf[4];
+                return true;
+            } else {
+                ESP_LOGW(TAG, "CRC error (try %d/%d)", attempt + 1, MODBUS_MAX_RETRY);
+            }
+        } else {
+            ESP_LOGW(TAG, "No valid response (try %d/%d)", attempt + 1, MODBUS_MAX_RETRY);
         }
-        *value = (rx_buf[3] << 8) | rx_buf[4];
-        return true;
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
-    else {
-        ESP_LOGW(TAG, "No valid response from device.");
-        return false;
-    }
+    ESP_LOGE(TAG, "Read register 0x%04X failed after %d retries", reg_addr, MODBUS_MAX_RETRY);
+    return false;
 }
 
-/********** 写多个寄存器 (32位) **********/
+/********** 写多个寄存器 (32位，带重试) **********/
 void SERVO_MOTOR_modbus_write_multi_register(uint16_t reg_addr, uint32_t value) {
     uint8_t frame[13];
     frame[0] = SERVO_MOTOR_SLAVE_ADDR;
@@ -137,25 +150,30 @@ void SERVO_MOTOR_modbus_write_multi_register(uint16_t reg_addr, uint32_t value) 
     ESP_LOG_BUFFER_HEX("TX", frame, sizeof(frame));
 #endif
 
-    SERVO_MOTOR_rs485_send_bytes(frame, sizeof(frame));
+    for (int attempt = 0; attempt < MODBUS_MAX_RETRY; attempt++) {
+        SERVO_MOTOR_rs485_send_bytes(frame, sizeof(frame));
+        vTaskDelay(pdMS_TO_TICKS(MODBUS_DELAY_MS));
 
-    vTaskDelay(pdMS_TO_TICKS(100));
-    uint8_t rx_buf[256];
-    int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(100));
+        uint8_t rx_buf[256];
+        int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(MODBUS_DELAY_MS));
 
-    if (rx_len > 0) {
+        if (rx_len >= 8) {
 #ifdef SERVO_MOTOR_DEBUG
-        ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
+            ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
 #endif
+            uint16_t crc_calc = modbus_crc16(rx_buf, rx_len - 2);
+            uint16_t crc_recv = rx_buf[rx_len - 2] | (rx_buf[rx_len - 1] << 8);
+            if (crc_calc == crc_recv) return; // 如果成功发出则直接返回并打印发出的数据 否则就重新发出数据并使用日志打印出重新发的次数
+            ESP_LOGW(TAG, "CRC error (try %d/%d)", attempt + 1, MODBUS_MAX_RETRY);
+        } else {
+            ESP_LOGW(TAG, "No response (try %d/%d)", attempt + 1, MODBUS_MAX_RETRY);
+        }
+        vTaskDelay(pdMS_TO_TICKS(MODBUS_DELAY_MS)); //这里给延时，可以用宏定义进行延迟的修改
     }
-    else {
-        ESP_LOGW(TAG, "No response from device.");
-    }
-
-    vTaskDelay(pdMS_TO_TICKS(100));
+    ESP_LOGE(TAG, "Write multi-register failed after %d retries.", MODBUS_MAX_RETRY);
 }
 
-/********** 读 32位寄存器  **********/
+/********** 读32位寄存器（带重试） **********/
 int32_t SERVO_MOTOR_modbus_read_position(uint16_t reg_high, uint16_t reg_low) {
     uint8_t frame[8];
     frame[0] = SERVO_MOTOR_SLAVE_ADDR;
@@ -163,7 +181,7 @@ int32_t SERVO_MOTOR_modbus_read_position(uint16_t reg_high, uint16_t reg_low) {
     frame[2] = reg_high >> 8;
     frame[3] = reg_high & 0xFF;
     frame[4] = 0x00;
-    frame[5] = 0x02; // 一共读 2 个寄存器（高位和低位）
+    frame[5] = 0x02;
 
     uint16_t crc = modbus_crc16(frame, 6);
     frame[6] = crc & 0xFF;
@@ -173,32 +191,30 @@ int32_t SERVO_MOTOR_modbus_read_position(uint16_t reg_high, uint16_t reg_low) {
     ESP_LOG_BUFFER_HEX("TX", frame, sizeof(frame));
 #endif
 
-    SERVO_MOTOR_rs485_send_bytes(frame, sizeof(frame));
+    for (int attempt = 0; attempt < MODBUS_MAX_RETRY; attempt++) {
+        SERVO_MOTOR_rs485_send_bytes(frame, sizeof(frame));
+        vTaskDelay(pdMS_TO_TICKS(MODBUS_DELAY_MS));
 
-    vTaskDelay(pdMS_TO_TICKS(100));
-
-    uint8_t rx_buf[256];
-    int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(200));
-
-    if (rx_len < 9) {
-        ESP_LOGW(TAG, "No valid response");
-        return 0;
+        uint8_t rx_buf[256];
+        int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, sizeof(rx_buf), pdMS_TO_TICKS(200));
+        if (rx_len >= 9) {
+            uint16_t crc_calc = modbus_crc16(rx_buf, rx_len - 2);
+            uint16_t crc_recv = rx_buf[rx_len - 2] | (rx_buf[rx_len - 1] << 8);
+            if (crc_calc == crc_recv) {
+                uint16_t high = (rx_buf[3] << 8) | rx_buf[4];
+                uint16_t low = (rx_buf[5] << 8) | rx_buf[6];
+                return ((int32_t)high << 16) | low;
+            }
+            ESP_LOGW(TAG, "CRC error (try %d/%d)", attempt + 1, MODBUS_MAX_RETRY);
+        } else {
+            ESP_LOGW(TAG, "Invalid response (try %d/%d)", attempt + 1, MODBUS_MAX_RETRY);
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 
-#ifdef SERVO_MOTOR_DEBUG
-    ESP_LOG_BUFFER_HEX("RX", rx_buf, rx_len);
-#endif
-
-    // 按 Modbus 协议解析：
-    uint16_t high = (rx_buf[3] << 8) | rx_buf[4];
-    uint16_t low = (rx_buf[5] << 8) | rx_buf[6];
-
-    int32_t value = ((int32_t)high << 16) | low;
-
-    ESP_LOGI("POSITION", "Decoded position = %ld", value);
-    return value;
+    ESP_LOGE(TAG, "Read position failed after %d retries.", MODBUS_MAX_RETRY);
+    return 0;
 }
-
 
 /********** UART初始化 **********/
 void SERVO_MOTOR_init(void) {
@@ -313,7 +329,7 @@ void SERVO_MOTOR_Move_To_Position(SensorFunc sensor_get_state, float speed, cons
     SERVO_MOTOR_Set_Speed(speed);
     // 一直检测，直到传感器触发
     while (sensor_get_state() != 0) {
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(MODBUS_DELAY_MS));
     }
     // 停止电机
     SERVO_MOTOR_Set_Speed(0);
@@ -422,7 +438,7 @@ void SERVO_MOTOR_POS_Reg(int speed_rpm, int32_t position, int mode, bool use_sen
                 ESP_LOGI("SERVO_MOVE", "传感器触发，停止电机");
                 break;
             }
-            vTaskDelay(pdMS_TO_TICKS(100)); // 10ms 检测一次
+            vTaskDelay(pdMS_TO_TICKS(MODBUS_DELAY_MS)); // 100ms 检测一次
             elapsed_ms += 10;
         }
 
@@ -465,27 +481,27 @@ void SERVO_MOTOR_POS_Reg(int speed_rpm, int32_t position, int mode, bool use_sen
     ESP_LOGI("SERVO_MOVE", "电机已停止");
 }
 
-static bool modbus_send_and_wait_response(const uint8_t *tx_data, uint8_t tx_len,
-                                          uint8_t *rx_buf, uint16_t rx_buf_len,
-                                          uint16_t expect_min_len, const char *desc) {
-    const int MAX_RETRY = 3;
-    for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
-        SERVO_MOTOR_rs485_send_bytes(tx_data, tx_len);
-        int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, rx_buf_len, pdMS_TO_TICKS(200));
-        if (rx_len >= expect_min_len) {
-            // 校验CRC
-            uint16_t crc_calc = modbus_crc16(rx_buf, rx_len - 2);
-            uint16_t crc_recv = rx_buf[rx_len - 2] | (rx_buf[rx_len - 1] << 8);
-            if (crc_calc == crc_recv) {
-                return true; // ✅ 成功
-            } else {
-                ESP_LOGW(TAG, "[%s] CRC错误，第%d次重试", desc, attempt);
-            }
-        } else {
-            ESP_LOGW(TAG, "[%s] 无响应，第%d次重试", desc, attempt);
-        }
-        vTaskDelay(pdMS_TO_TICKS(100)); // 小延时再发
-    }
-    ESP_LOGE(TAG, "[%s] 多次重试失败！", desc);
-    return false;
-}
+// static bool modbus_send_and_wait_response(const uint8_t *tx_data, uint8_t tx_len,
+//                                           uint8_t *rx_buf, uint16_t rx_buf_len,
+//                                           uint16_t expect_min_len, const char *desc) {
+//     const int MAX_RETRY = 3;
+//     for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+//         SERVO_MOTOR_rs485_send_bytes(tx_data, tx_len);
+//         int rx_len = uart_read_bytes(SERVO_MOTOR_UART_NUM, rx_buf, rx_buf_len, pdMS_TO_TICKS(200));
+//         if (rx_len >= expect_min_len) {
+//             // 校验CRC
+//             uint16_t crc_calc = modbus_crc16(rx_buf, rx_len - 2);
+//             uint16_t crc_recv = rx_buf[rx_len - 2] | (rx_buf[rx_len - 1] << 8);
+//             if (crc_calc == crc_recv) {
+//                 return true; // 成功
+//             } else {
+//                 ESP_LOGW(TAG, "[%s] CRC错误，第%d次重试", desc, attempt);
+//             }
+//         } else {
+//             ESP_LOGW(TAG, "[%s] 无响应，第%d次重试", desc, attempt);
+//         }
+//         vTaskDelay(pdMS_TO_TICKS(MODBUS_DELAY_MS)); // 小延时再发
+//     }
+//     ESP_LOGE(TAG, "[%s] 多次重试失败！", desc);
+//     return false;
+// }

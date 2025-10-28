@@ -98,7 +98,7 @@ void Big_ROTATE_stepper_rotate_ADS(float angle_deg, float rpm, int dir, bool che
     gpio_set_level(Big_ROTATE_STEPPER_DIR_GPIO, dir ? 1 : 0);
     gpio_set_level(Big_ROTATE_STEPPER_EN_GPIO, 0); // 使能电机
 
-    // ====== 三段步数分配 ======
+    //========= 三段步数分配 ==========
     uint32_t accel_steps = steps_total / 6;
     uint32_t decel_steps = steps_total / 6;
     uint32_t uniform_steps = steps_total - accel_steps - decel_steps;
