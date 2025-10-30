@@ -25,7 +25,7 @@ void left_right_motor() {
  * @brief 伺服电机右位置
  */
 void column_motor() {
-    Big_ROTATE_stepper_rotate_US(360.0f, 3.5f, 1, true);
+    Big_ROTATE_stepper_rotate_US(360.0f, 4.0f, 1, true);
 }
 
 /**

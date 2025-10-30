@@ -15,8 +15,8 @@
 #define SERVO_MOTOR_UART_NUM UART_NUM_1
 
 // RS485 引脚定义
-#define LeftRight485_TX    41   // IO41
-#define LeftRight485_RX    42   // IO42
+#define LeftRight485_TX   41    // IO41  2
+#define LeftRight485_RX   42    // IO42  1
 
 // 通讯波特率
 #define SERVO_MOTOR_RS485_BAUDRATE   57600   // 波特率
@@ -29,9 +29,31 @@
 #define SERVO_MOTOR_MODBUS_WRITE_SINGLE_REGISTER    0x06
 #define SERVO_MOTOR_MODBUS_WRITE_MULTIPLE_REGISTER  0x10
 
+//寄存器定义
+#define Positioning_completed_reg     0x55  //位置完成 0x55 原来的IDS830
+#define Read_voltage_reg              0xE1  //读取电压 0xE1
+#define Read_current_reg              0xE2  //读取电流 0xE2
+#define Clear_fault_reg               0x4A  //清除故障 0x4A
+#define Motor_start_stop_reg          0x00  //电机开关 0x00  使能0x01|失能0x00
+#define Motor_Mode_reg                0x02  //模式选择 0x02  速度0xC4|位置0xD0|扭矩0xC1
+#define Speed_command_reg             0x06  //速度给定 0x06
+#define Reset_position_reg            0x4C  //位置清零 0x4C
+#define Position_Mode_Selection_reg   0x51  //位置选择 0x51  绝对0x00|相对0x01
+#define Position_Mode_Speed_Peak_reg  0x1D  //位置模式 0x1D  速度的峰值
+
+
+//通讯连接定义
+#define MODBUS_MAX_RETRY 10     // 最大重试次数
+#define MODBUS_DELAY_MS  100   // 每次通信等待延迟
+#define SERVO_TAG "SERVO_MOTOR_RS485"
+
 // 是否启用调试日志（收发帧打印）
 #define SERVO_MOTOR_DEBUG  // 注释掉则关闭日志
 /* ------------------- 公共函数 ------------------- */
+
+
+/********** RS485发送数据 **************/
+void SERVO_MOTOR_rs485_send_bytes(const uint8_t* data, uint8_t length);
 
 /**
 * @CreateTime 2025/9/10

@@ -144,11 +144,10 @@ void Peristaltic_Steeping(int volume, int rpm) {
 /*****************   柱体电机旋转 45 度 Start *******************/
 void BigRotateMotorTask(void* pvParameters) {
     float gear = *(float*)pvParameters;
-    Big_ROTATE_stepper_rotate_US(45.0f, 3.5f, 1, false);
+    Big_ROTATE_stepper_rotate_US(45.0f, 4.0f, 1, false);
     ESP_LOGI(TAG_SYSTEM, "柱体电机旋转 45 度 完毕  到达满柱体  当前挡位 %.2f", gear);
     vTaskDelete(NULL); // 执行完毕自动删除
 }
-
 /*****************   柱体电机旋转 45 度 End *******************/
 void All_init(void) {
     sensor_ALL_init(); //  初始化所有传感器
@@ -192,9 +191,10 @@ int check_and_pick_plate(float gear) {
  * 成功后的操作
  * */
 void Success(float gear, int volume, int rpm) {
-    vTaskDelay(pdMS_TO_TICKS(200));
+
+    vTaskDelay(pdMS_TO_TICKS(100));
     /************************   升降电机--上限位置    ***************************/
-    UpDown_stepper_rotate(640.0f, 80.0f * gear, 1, 0); //上盖位置
+    UpDown_stepper_rotate(680.0f, 80.0f * gear, 1, 0); //上盖位置
     vTaskDelay(pdMS_TO_TICKS(100));
     check_pause();
 
@@ -204,7 +204,7 @@ void Success(float gear, int volume, int rpm) {
     check_pause();
 
     /************************   升降电机--吐液位置    ***************************/
-    UpDown_stepper_rotate(660.0f, 80.0f * gear, 0, 0); //开盖
+    UpDown_stepper_rotate(700.0f, 80.0f * gear, 0, 0); //开盖
     vTaskDelay(pdMS_TO_TICKS(100));
     check_pause();
 
@@ -222,6 +222,7 @@ void Success(float gear, int volume, int rpm) {
 
     /****************   左右电机--中位置    *******************/
     uart_set_baudrate(SERVO_MOTOR_UART_NUM, 57600);
+    vTaskDelay(pdMS_TO_TICKS(100));
     SERVO_MOTOR_POS_Reg((int)(1000 * gear), -300000, 0,false);
     check_pause();
 
@@ -230,7 +231,7 @@ void Success(float gear, int volume, int rpm) {
     ESP_LOGI(TAG_SYSTEM, "移动到罐装完毕的柱体");
 
     /************************   升降电机--上限位置    ***************************/
-    UpDown_stepper_rotate(660.0f, 80.0f * gear, 1, 0);
+    UpDown_stepper_rotate(700.0f, 80.0f * gear, 1, 0);
     check_pause();
 
     /***************   关闭上磁阀和上气泵电机    ******************/
@@ -239,7 +240,7 @@ void Success(float gear, int volume, int rpm) {
     check_pause();
 
     /************************   升降电机--下限位置    ***************************/
-    UpDown_stepper_rotate(1860.0f, 80.0f * gear, 0, 0);
+    UpDown_stepper_rotate(1900.0f, 80.0f * gear, 0, 0);
     check_pause();
 
     /****************   左右电机--右位置    *******************/
@@ -260,7 +261,7 @@ void Success(float gear, int volume, int rpm) {
     check_pause();
 
     /****************   柱体电机--转-45度  空盒子    *******************/
-    Big_ROTATE_stepper_rotate_US(45.0f, 3.5f, 1, false);
+    Big_ROTATE_stepper_rotate_US(45.0f, 4.0f, 1, false);
     check_pause();
 }
 
@@ -271,7 +272,7 @@ static SemaphoreHandle_t failureSem = NULL;
 
 void BigRotateTask(void* pvParameters) {
     const float gear = *(float*)pvParameters;
-    Big_ROTATE_stepper_rotate_US(90.0f, 3.5f, 1, false);
+    Big_ROTATE_stepper_rotate_US(90.0f, 4.0f, 1, false);
 
     xSemaphoreGive(failureSem);
     vTaskDelete(NULL);

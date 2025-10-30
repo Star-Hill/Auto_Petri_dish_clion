@@ -30,7 +30,9 @@ void UpDown_stepper_rotate(float angle_deg, float rpm, int dir, int check_sensor
     }
 
     gpio_set_level(UpDown_STEPPER_DIR_GPIO, dir ? 0 : 1);
+    vTaskDelay(pdMS_TO_TICKS(50));
     gpio_set_level(UpDown_STEPPER_EN_GPIO, 0); // 使能电机
+    vTaskDelay(pdMS_TO_TICKS(50));
 
     // ====== 动态申请 RMT 通道 ======
     rmt_channel_handle_t motor_chan = NULL;

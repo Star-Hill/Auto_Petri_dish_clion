@@ -25,8 +25,9 @@ void Little_stepper_rotate_US(float angle_deg, float rpm, int dir) {
     if (steps_total == 0) return;
 
     gpio_set_level(Little_ROTATE_STEPPER_DIR_GPIO, dir ? 1 : 0);
+    vTaskDelay(pdMS_TO_TICKS(50));
     gpio_set_level(Little_ROTATE_STEPPER_EN_GPIO, 0);
-
+    vTaskDelay(pdMS_TO_TICKS(50));
     rmt_channel_handle_t motor_chan = NULL;
     rmt_tx_channel_config_t tx_conf = {
         .clk_src = RMT_CLK_SRC_DEFAULT,

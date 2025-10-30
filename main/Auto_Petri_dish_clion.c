@@ -18,18 +18,24 @@ void app_main(void) {
     */
     All_init();
 
-    //上电自动校准
-    //Machine_initialization();
-    //ESP_LOGW("系统日志", "上电自动校准完成，开始命令队列初始");
-
     /**
     * @CreateTime 2025/9/8
     * @Author Star-Hill
     * @Author Star-Hill
     * @brief command_handler_init()创建任务队列表
     */
+
+     for (int i = 0; i < 3; ++i) {
+         SERVO_MOTOR_read_Voltage();
+     }
     command_handler_init();
 
+
+    // UpDown_stepper_rotate(1220.0f, 80.0f, 1, 0);
+    // vTaskDelay(pdMS_TO_TICKS(1000));
+    // Pump_Valve_run_combo(0, 1);
+    // vTaskDelay(pdMS_TO_TICKS(5000));
+    // Pump_Valve_run_combo(0, 0);
 
 
     /**
@@ -51,5 +57,22 @@ void app_main(void) {
     //     UpDown_stepper_rotate(1220.0f, 160.0f , 0, 0);
     //     vTaskDelay(pdMS_TO_TICKS(1000));
     // }
+
+    /*读取十次电压*/
+    // for (int i = 0; i < 10; ++i) {
+    //     SERVO_MOTOR_read_Voltage();
+    // }
+
+    /*位置模式测试*/
+    // SERVO_MOTOR_POS_Reg((int)(1500), -20000, 0, NULL);
+    // SERVO_MOTOR_POS_Reg((int)(200), 600000, 0, true);
+    // SERVO_MOTOR_Clear_Position(); // 位置强制清零
+
+    // for (int i = 0; i < 10; ++i) {
+    //     SERVO_MOTOR_POS_Reg((int)(1500), -50000, 0, NULL);
+    //     vTaskDelay(pdMS_TO_TICKS(1000));
+    //     SERVO_MOTOR_POS_Reg((int)(1500), 50000, 0, NULL);
+    // }
+
 
 }
