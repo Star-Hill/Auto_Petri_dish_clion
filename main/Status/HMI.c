@@ -130,7 +130,7 @@ static void command_execute_task(void *pvParameters)
                     rpm = atoi(token);
 
                 ESP_LOGI(TAG, "解析结果: 数量=%d, 体积=%d, 档位=%.1f, 蠕动泵速度=%d", num, volume, gear, rpm);
-                int volume2 = volume + 5; // 5就是补偿，比如输入20其实传入的参数是25，保证能装满20ml
+                int volume2 = volume + 5; // 5就是补偿，比如输入20其实传入的参数是25，保证能装满20ml（故意设计，与泵内-0.3s补偿独立，勿删）
                 Instrument_starts_canning(num, volume2, gear, rpm);
             }
             /***************   液路排空    ******************/

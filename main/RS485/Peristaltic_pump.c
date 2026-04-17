@@ -197,10 +197,16 @@ void Peristaltic_pump_Cleaning(bool Cleaning_Speed)
 
 void Peristaltic_pump_Run(int32_t speed, float run_time_s)
 {
+    // 问题A修复：run_time_s 为负时（体积过小导致 time_s - 0.3f < 0），跳过运行避免 vTaskDelay 溢出
+    if (run_time_s <= 0.0f)
+    {
+        ESP_LOGW(Peristaltic_pump_TAG, "run_time_s=%.3f <= 0，跳过运行", run_time_s);
+        return;
+    }
     Peristaltic_pump_Control(true);
     // Peristaltic_pump_set_Reverse_Mode(0); // 0=顺时针 --原来的
     Peristaltic_pump_set_Reverse_Mode(1); // 1=逆时针 --现在改成逆时针 蠕动泵转向修改
     Peristaltic_pump_set_speed(speed);
-    vTaskDelay(pdMS_TO_TICKS(run_time_s * 1000));
+    vTaskDelay(pdMS_TO_TICKS((uint32_t)(run_time_s * 1000)));
     Peristaltic_pump_Control(false);
 }

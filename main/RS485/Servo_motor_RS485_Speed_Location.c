@@ -455,7 +455,7 @@ void SERVO_MOTOR_POS_Reg(int speed_rpm, int32_t position, int mode, bool use_sen
             }
             ESP_LOGI("SERVO_MOVE", "传感器未触发，电机继续");
             vTaskDelay(pdMS_TO_TICKS(50)); // 50ms 检测一次
-            elapsed_ms += 10;
+            elapsed_ms += 50; // 问题4修复：与 vTaskDelay 对齐，原为 += 10 导致超时提前10倍触发
         }
 
         if (elapsed_ms >= max_wait_ms)

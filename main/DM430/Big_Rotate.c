@@ -90,30 +90,36 @@ void Big_ROTATE_stepper_rotate_US(float angle_deg, float rpm, int dir, bool chec
 void Big_ROTATE_stepper_rotate_ADS(float angle_deg, float rpm, int dir) {
     // 计算总步数
     uint32_t steps_total = (uint32_t)((angle_deg / 360.0f) * Big_ROTATE_STEPS_PER_REV * BIG_ROTATE_GEAR_RATIO);
+    // 错误3修复：缺少零步数保护，steps_total=0 时 curve encoder 行为未定义
+    if (steps_total < 5) return;
+
     // 最大频率
     uint32_t freq_max = (uint32_t)((rpm / 60.0f) * Big_ROTATE_STEPS_PER_REV * BIG_ROTATE_GEAR_RATIO);
-    //  将起步频率降低，使加速视觉可见
     uint32_t freq_start = 3000;
     if (freq_start > freq_max - 50) freq_start = freq_max / 2;
 
     // 计算加减速段
     uint32_t accel_steps = steps_total / 10;
     uint32_t decel_steps = accel_steps;
+
+    // 错误1修复：sample_points 不能超过 |freq_max - freq_start|，否则触发 ESP_ERR_INVALID_ARG
+    uint32_t freq_delta = (freq_max > freq_start) ? (freq_max - freq_start) : (freq_start - freq_max);
+    uint32_t sample_points = (freq_delta < 1000) ? freq_delta : 1000;
+    // 同时将加减速步数限制在 sample_points 以内，保持 sample_points <= accel_steps 关系合理
+    if (accel_steps > freq_delta) accel_steps = decel_steps = freq_delta;
+
+    // uniform_steps 在加减速步数确定后计算，保证总步数正确
     uint32_t uniform_steps = (steps_total > (accel_steps + decel_steps))
                                  ? (steps_total - accel_steps - decel_steps)
                                  : 0;
 
-    // 限制加减速长度
-    // uint32_t delta = (freq_max > freq_start) ? (freq_max - freq_start) : (freq_start - freq_max);
-    // if (accel_steps > delta) accel_steps = decel_steps = delta;
-
-    ESP_LOGI("Big_Stepper", "Total steps=%lu, accel=%lu, uniform=%lu, decel=%lu, freq_start=%lu, freq_max=%lu",
-             steps_total, accel_steps, uniform_steps, decel_steps, freq_start, freq_max);
+    ESP_LOGI("Big_Stepper", "Total steps=%lu, accel=%lu, uniform=%lu, decel=%lu, freq_start=%lu, freq_max=%lu, sample_points=%lu",
+             steps_total, accel_steps, uniform_steps, decel_steps, freq_start, freq_max, sample_points);
 
     // 配置方向与使能
     gpio_set_level(Big_ROTATE_STEPPER_DIR_GPIO, dir ? 1 : 0);
     vTaskDelay(pdMS_TO_TICKS(10));
-    gpio_set_level(Big_ROTATE_STEPPER_EN_GPIO, 0);
+    gpio_set_level(Big_ROTATE_STEPPER_EN_GPIO, 1); // 使能（1=使能，0=失能）
     vTaskDelay(pdMS_TO_TICKS(10));
 
     // RMT 通道
@@ -131,17 +137,17 @@ void Big_ROTATE_stepper_rotate_ADS(float angle_deg, float rpm, int dir) {
 
     // ---- 加速 ----
     stepper_motor_curve_encoder_config_t accel_cfg = {
-        .resolution = Big_ROTATE_STEPPER_RESOLUTION_HZ,
-        .sample_points = 1000,
-        .start_freq_hz = freq_start,
-        .end_freq_hz = freq_max,
+        .resolution     = Big_ROTATE_STEPPER_RESOLUTION_HZ,
+        .sample_points  = sample_points,
+        .start_freq_hz  = freq_start,
+        .end_freq_hz    = freq_max,
     };
     rmt_encoder_handle_t accel_encoder = NULL;
     ESP_ERROR_CHECK(rmt_new_stepper_motor_curve_encoder(&accel_cfg, &accel_encoder));
     ESP_ERROR_CHECK(rmt_transmit(motor_chan, accel_encoder, &accel_steps, sizeof(accel_steps), &tx_cfg));
     ESP_ERROR_CHECK(rmt_tx_wait_all_done(motor_chan, -1));
 
-    // ---- 匀速 ---- 使用步数控制，而非 loop_count
+    // ---- 匀速 ----
     if (uniform_steps > 0) {
         stepper_motor_uniform_encoder_config_t uniform_cfg = {
             .resolution = Big_ROTATE_STEPPER_RESOLUTION_HZ,
@@ -149,28 +155,22 @@ void Big_ROTATE_stepper_rotate_ADS(float angle_deg, float rpm, int dir) {
         rmt_encoder_handle_t uniform_encoder = NULL;
         ESP_ERROR_CHECK(rmt_new_stepper_motor_uniform_encoder(&uniform_cfg, &uniform_encoder));
 
-        // 设置匀速频率参数
         uint32_t freq = freq_max;
-
-        // 由 loop_count 控制步数
         tx_cfg.loop_count = uniform_steps;
 
         ESP_ERROR_CHECK(rmt_transmit(motor_chan, uniform_encoder, &freq, sizeof(freq), &tx_cfg));
         ESP_ERROR_CHECK(rmt_tx_wait_all_done(motor_chan, -1));
-
         rmt_del_encoder(uniform_encoder);
     }
 
     // ---- 减速 ----
     stepper_motor_curve_encoder_config_t decel_cfg = {
-        .resolution = Big_ROTATE_STEPPER_RESOLUTION_HZ,
-        .sample_points = 1000,
-        .start_freq_hz = freq_max,
-        .end_freq_hz = freq_start,
+        .resolution     = Big_ROTATE_STEPPER_RESOLUTION_HZ,
+        .sample_points  = sample_points,
+        .start_freq_hz  = freq_max,
+        .end_freq_hz    = freq_start,
     };
     rmt_encoder_handle_t decel_encoder = NULL;
-
-    // 恢复 loop_count，防止减速段继续循环
     tx_cfg.loop_count = 0;
 
     ESP_ERROR_CHECK(rmt_new_stepper_motor_curve_encoder(&decel_cfg, &decel_encoder));
@@ -183,6 +183,5 @@ void Big_ROTATE_stepper_rotate_ADS(float angle_deg, float rpm, int dir) {
     rmt_disable(motor_chan);
     rmt_del_channel(motor_chan);
 
-    // 关闭电机
-    gpio_set_level(Big_ROTATE_STEPPER_EN_GPIO, 1);
+    gpio_set_level(Big_ROTATE_STEPPER_EN_GPIO, 0); // 失能
 }

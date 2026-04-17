@@ -79,12 +79,14 @@ void Little_ROTATE_stepper_rotate_ADS(float angle_deg, float rpm, int dir) {
     // 计算加减速段
     uint32_t accel_steps = steps_total / 7;
     uint32_t decel_steps = accel_steps;
-    uint32_t uniform_steps = (steps_total > (accel_steps + decel_steps)) ?
-                             (steps_total - accel_steps - decel_steps) : 0;
 
-    // 限制加减速长度
+    // 错误2修复：先裁剪加减速步数，再计算 uniform_steps
+    // 原代码先算 uniform_steps 再裁剪，导致裁剪后实际总步数 < steps_total，电机转角偏少
     uint32_t delta = (freq_max > freq_start) ? (freq_max - freq_start) : (freq_start - freq_max);
     if (accel_steps > delta) accel_steps = decel_steps = delta;
+
+    uint32_t uniform_steps = (steps_total > (accel_steps + decel_steps)) ?
+                             (steps_total - accel_steps - decel_steps) : 0;
 
     // 配置方向与使能
     gpio_set_level(Little_ROTATE_STEPPER_DIR_GPIO, dir ? 1 : 0);
