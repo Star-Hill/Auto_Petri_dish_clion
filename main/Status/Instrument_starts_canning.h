@@ -11,38 +11,41 @@
 #include "freertos/task.h"
 
 /***************    单元驱动    ***************/
-#include "sensor.h"                 //传感器
-#include "UpDown.h"                 //上下步进电机
-#include "Big_Rotate.h"             //培养皿架旋转
-#include "Little_Rotate.h"          //培养皿旋转
-#include "Pump_driver.h"            //气泵
-#include "Valve_driver.h"           //电磁阀
-#include "Peristaltic_pump.h"       //蠕动泵
-#include "Servo_motor_RS485_Speed_Location.h"  //左右伺服电机
+#include "sensor.h" //传感器
+#include "buzzer.h"
+#include "UpDown.h"                           //上下步进电机
+#include "Big_Rotate.h"                       //培养皿架旋转
+#include "Little_Rotate.h"                    //培养皿旋转
+#include "Pump_driver.h"                      //气泵
+#include "Valve_driver.h"                     //电磁阀
+#include "Peristaltic_pump.h"                 //蠕动泵
+#include "Servo_motor_RS485_Speed_Location.h" //左右伺服电机
 
-#include "HMI.h"                    //串口屏
-#include "HMI_control_driver.h"     //软串口底层
+#include "HMI.h"                //串口屏
+#include "HMI_control_driver.h" //软串口底层
 
 /***************    组合驱动    ***************/
 #include "Pump_Valve_driver.h"      //电磁阀 & 气泵一体化
 #include "Machine_initialization.h" //回零
 
+#define left -515000   // 左
+#define middle -300000 // 中
+#define right -10000   // 原点(偏一点校准)
 
 void Instrument_starts_canning(int num, int volume, float gear, int rpm);
 
 int check_and_pick_plate(float gear);
 
-//调用    Peristaltic_Steeping  两个任务同步函数
+// 调用    Peristaltic_Steeping  两个任务同步函数
 void Peristaltic_Steeping(int volume, int rpm);
 
 void All_init(void);
 
-void Success(float gear,int volume,int rpm);
+void Success(float gear, int volume, int rpm);
 
 void Failure(float gear);
 
 // 检查是否需要暂停（封装函数）
 void check_pause(void);
 
-
-#endif //AUTO_PETRI_DISH_CLION_INSTRUMENT_STARTS_CANNING_H
+#endif // AUTO_PETRI_DISH_CLION_INSTRUMENT_STARTS_CANNING_H

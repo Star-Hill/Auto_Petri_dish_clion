@@ -15,8 +15,8 @@
 #define SERVO_MOTOR_UART_NUM UART_NUM_1
 
 // RS485 引脚定义
-#define LeftRight485_TX   41    // IO41  2
-#define LeftRight485_RX   42    // IO42  1
+#define LeftRight485_TX    41           // IO2
+#define LeftRight485_RX    42           // IO1
 
 // 通讯波特率
 #define SERVO_MOTOR_RS485_BAUDRATE   57600   // 波特率
@@ -49,10 +49,9 @@
 
 // 是否启用调试日志（收发帧打印）
 #define SERVO_MOTOR_DEBUG  // 注释掉则关闭日志
+
 /* ------------------- 公共函数 ------------------- */
-
-
-/********** RS485发送数据 **************/
+/************** RS485发送数据 **************/
 void SERVO_MOTOR_rs485_send_bytes(const uint8_t* data, uint8_t length);
 
 /**
@@ -62,6 +61,12 @@ void SERVO_MOTOR_rs485_send_bytes(const uint8_t* data, uint8_t length);
 */
 void SERVO_MOTOR_init(void);
 
+/**
+* @CreateTime 2025/9/10
+* @Author Star-Hill
+* @brief 卸载伺服电机 UART 与 RS485 通讯
+*/
+void SERVO_MOTOR_deinit(void);
 /**
 * @CreateTime 2025/9/10
 * @Author Star-Hill

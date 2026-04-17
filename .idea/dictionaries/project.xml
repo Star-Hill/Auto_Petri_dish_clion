@@ -2,12 +2,14 @@
   <dictionary name="project">
     <words>
       <w>baudrate</w>
+      <w>deinit</w>
       <w>gptimer</w>
       <w>hpoint</w>
       <w>intr</w>
       <w>ledc</w>
       <w>leftright</w>
       <w>logw</w>
+      <w>softserial</w>
     </words>
   </dictionary>
 </component>

@@ -9,12 +9,15 @@ void UpDown_stepper_init(void) {
         .pin_bit_mask = (1ULL << UpDown_STEPPER_DIR_GPIO) | (1ULL << UpDown_STEPPER_EN_GPIO),
     };
     gpio_config(&io_conf);
-    gpio_set_level(UpDown_STEPPER_EN_GPIO, 1); // 默认失能
+    gpio_set_level(UpDown_STEPPER_EN_GPIO, 0); // 默认失能
     ESP_LOGI("UpDown_Stepping", "GPIO 初始化完成");
 }
 
 // ==================== 步进电机匀速旋转 ====================
 void UpDown_stepper_rotate(float angle_deg, float rpm, int dir, int check_sensor) {
+    if (rpm >= 600) {
+        rpm = 600;
+    }
     uint32_t steps_total = (uint32_t)((angle_deg / 360.0f) * UpDown_STEPS_PER_REV * UpDown_ROTATE_GEAR_RATIO);
     uint32_t freq_max = (uint32_t)((rpm / 60.0f) * UpDown_STEPS_PER_REV * UpDown_ROTATE_GEAR_RATIO);
 
@@ -31,7 +34,7 @@ void UpDown_stepper_rotate(float angle_deg, float rpm, int dir, int check_sensor
 
     gpio_set_level(UpDown_STEPPER_DIR_GPIO, dir ? 0 : 1);
     vTaskDelay(pdMS_TO_TICKS(50));
-    gpio_set_level(UpDown_STEPPER_EN_GPIO, 0); // 使能电机
+    gpio_set_level(UpDown_STEPPER_EN_GPIO, 1); // 使能电机
     vTaskDelay(pdMS_TO_TICKS(50));
 
     // ====== 动态申请 RMT 通道 ======
@@ -45,7 +48,7 @@ void UpDown_stepper_rotate(float angle_deg, float rpm, int dir, int check_sensor
     };
     if (rmt_new_tx_channel(&tx_conf, &motor_chan) != ESP_OK) {
         ESP_LOGE("UpDown_Stepping", "RMT 通道申请失败");
-        gpio_set_level(UpDown_STEPPER_EN_GPIO, 1);
+        gpio_set_level(UpDown_STEPPER_EN_GPIO, 0);
         return;
     }
     rmt_enable(motor_chan);
@@ -68,7 +71,7 @@ void UpDown_stepper_rotate(float angle_deg, float rpm, int dir, int check_sensor
         rmt_disable(motor_chan);
         rmt_del_encoder(uniform_encoder);
         rmt_del_channel(motor_chan);
-        gpio_set_level(UpDown_STEPPER_EN_GPIO, 1);
+        gpio_set_level(UpDown_STEPPER_EN_GPIO, 0);
         return;
     }
 
@@ -78,5 +81,5 @@ void UpDown_stepper_rotate(float angle_deg, float rpm, int dir, int check_sensor
     rmt_del_encoder(uniform_encoder);
     rmt_disable(motor_chan);
     rmt_del_channel(motor_chan);
-    gpio_set_level(UpDown_STEPPER_EN_GPIO, 1); // 失能电机
+    gpio_set_level(UpDown_STEPPER_EN_GPIO, 0); // 失能电机
 }

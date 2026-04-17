@@ -13,8 +13,8 @@
 #include "stepper_motor_encoder.h"
 
 // ==================== 步进电机GPIO引脚 ====================
-#define Little_ROTATE_STEPPER_STEP_GPIO   13
 #define Little_ROTATE_STEPPER_DIR_GPIO    12
+#define Little_ROTATE_STEPPER_STEP_GPIO   13
 #define Little_ROTATE_STEPPER_EN_GPIO     14
 
 // ==================== 电机参数 ====================
@@ -29,8 +29,13 @@
 void Little_stepper_init(void);
 
 /**
- * 匀速旋转
+ * 匀速
  */
 void Little_stepper_rotate_US(float angle_deg, float rpm, int dir);
+
+/**
+ * S型加减速
+ */
+void Little_ROTATE_stepper_rotate_ADS(float angle_deg, float rpm, int dir);
 
 #endif // AUTO_PETRI_DISH_CLION_LITTLE_ROTATE_H

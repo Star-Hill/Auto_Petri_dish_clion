@@ -19,7 +19,6 @@
 /*
  * 本地库
  * */
-#include "Machine_initialization.h"
 
 // 外部可见的暂停变量
 extern volatile bool g_pause_flag;
@@ -32,4 +31,4 @@ void command_handler_init(void);
 
 // 提供外部访问的队列（如果你需要从其他地方直接发命令）
 extern QueueHandle_t command_queue;
-#endif //AUTO_PETRI_DISH_CLION_HMI_H
+#endif // AUTO_PETRI_DISH_CLION_HMI_H

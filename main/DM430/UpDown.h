@@ -14,9 +14,9 @@
 #include "driver/rmt_types.h"
 
 // ==================== 步进电机的GPIO引脚设置 ====================
-#define UpDown_STEPPER_STEP_GPIO   38        // STEP 脉冲引脚
-#define UpDown_STEPPER_DIR_GPIO    39        // 方向控制引脚
-#define UpDown_STEPPER_EN_GPIO     40        // 使能控制引脚
+#define UpDown_STEPPER_STEP_GPIO   48        // STEP 脉冲引脚
+#define UpDown_STEPPER_DIR_GPIO    47        // 方向控制引脚
+#define UpDown_STEPPER_EN_GPIO     21        // 使能控制引脚
 
 // ==================== 电机参数 ====================
 #define UpDown_STEPS_PER_REV           1600   // 电机转一圈步数（含细分）1600
@@ -31,7 +31,7 @@ void UpDown_stepper_init(void);
 /**
  * 上下电机调用函数
  * @param angle_deg    旋转角度（度）
- * @param rpm          转速（转/分钟）
+ * @param rpm          转速（转/分钟）200基值可行  300基值测试
  * @param dir          方向 (1=上, 0=下)
  * @param check_sensor 0=不检测, 1=检测上限, 2=检测下限
  * @Comment 1850--上  1220--取   1200--吐液

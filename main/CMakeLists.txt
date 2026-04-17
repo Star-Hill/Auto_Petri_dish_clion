@@ -11,7 +11,8 @@ idf_component_register(
             "RS485/Peristaltic_pump.c"                      #蠕动泵
 
             "Sensor/sensor.c"                               #传感器
-            "Uart/HMI_control_driver.c"                     #HMI屏幕
+            "Sensor/buzzer.c"
+            "Uart/HMI_control_driver.c"                     #HMI硬串口屏幕
 
             "Pump_and_Valve/Pump_driver.c"                  #泵
             "Pump_and_Valve/Valve_driver.c"                 #阀
@@ -20,6 +21,8 @@ idf_component_register(
             "Status/HMI.c"                                  #状态初始
             "Status/Machine_initialization.c"               #回零
             "Status/Instrument_starts_canning.c"            #操作
+
+
 
 
         INCLUDE_DIRS                    #路径
@@ -40,4 +43,5 @@ idf_component_register(
             nvs_flash
             esp_driver_rmt
 
+        PRIV_REQUIRES soft_uart
 )
